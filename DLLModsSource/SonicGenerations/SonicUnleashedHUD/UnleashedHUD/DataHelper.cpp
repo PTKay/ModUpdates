@@ -366,7 +366,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	}
 
 	if (rcSpeedGauge && playerContext)
-		rcSpeedGauge->SetMotionTime(playerContext->m_HorizontalVelocity.norm() / 90.0f * 100.0f);
+		rcSpeedGauge->SetMotionTime(playerContext->m_HorizontalVelocity.norm() / (playerContext->m_Is2DMode ? 45.0f : 90.0f) * 100.0f);
 
 	if (rcRingEnergyGauge && playerContext)
 	{
@@ -374,8 +374,10 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		rcRingEnergyGauge->SetMotionTime(100.0f);
 		rcRingEnergyGauge->Update(0.0f);
 
+		playerContext->m_ChaosEnergy = min(playerContext->m_ChaosEnergy, playerContext->GetMaxChaosEnergy());
+
 		rcRingEnergyGauge->SetMotion("size");
-		rcRingEnergyGauge->SetMotionTime(playerContext->m_ChaosEnergy);
+		rcRingEnergyGauge->SetMotionTime(playerContext->m_ChaosEnergy / playerContext->GetMaxChaosEnergy() * 100.0f);
 		rcRingEnergyGauge->Update(0.0f);
 	}
 
