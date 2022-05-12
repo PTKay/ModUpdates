@@ -139,7 +139,7 @@ void SetMissionScenePosition(Chao::CSD::CScene* pScene, const size_t index)
 
 void FreezeMotion(Chao::CSD::CScene* pScene)
 {
-	pScene->SetMotionTime(pScene->m_MotionEndTime);
+	pScene->SetMotionFrame(pScene->m_MotionEndFrame);
 	pScene->m_MotionSpeed = 0.0f;
 	pScene->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
 }
@@ -203,7 +203,7 @@ HOOK(void, __fastcall, ProcMsgGetMissionLimitTime, 0xD0F0E0, Sonic::CGameObject*
 	sprintf(text, "%02d", (int)(remainingTime / 60));
 	rcCountdown->GetNode("time100_l")->SetText(text);
 
-	rcCountdown->SetMotionTime(elapsedTime / limitTime * rcCountdown->m_MotionEndTime);
+	rcCountdown->SetMotionFrame(elapsedTime / limitTime * rcCountdown->m_MotionEndFrame);
 }
 
 HOOK(void, __fastcall, ProcMsgGetMissionCondition, 0xD0F130, Sonic::CGameObject* This, void* Edx, hh::fnd::Message& in_rMsg)
@@ -220,12 +220,10 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 
 	Sonic::CCsdDatabaseWrapper wrapper(This->m_pMember->m_pGameDocument->m_pMember->m_spDatabase.get());
 
-	boost::shared_ptr<Sonic::CCsdProject> spCsdProject;
-
-	wrapper.GetCsdProject(spCsdProject, "ui_playscreen");
+	auto spCsdProject = wrapper.GetCsdProject("ui_playscreen");
 	rcPlayScreen = spCsdProject->m_rcProject;
 
-	wrapper.GetCsdProject(spCsdProject, "ui_missionscreen");
+	spCsdProject = wrapper.GetCsdProject("ui_missionscreen");
 	rcMissionScreen = spCsdProject->m_rcProject;
 
 	rcPosition = rcMissionScreen->CreateScene("position");
@@ -337,7 +335,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		const size_t count = *(size_t*)((char*)This + 0x300);
 		sprintf(text, "%03d", count);
 		rcItemCount->GetNode("num_nume")->SetText(text);
-		rcItemCount->SetMotionTime(count >= itemCountDenominator ? rcItemCount->m_MotionEndTime : 0.0f);
+		rcItemCount->SetMotionFrame(count >= itemCountDenominator ? rcItemCount->m_MotionEndFrame : 0.0f);
 
 		SetMissionScenePosition(rcItemCount.Get(), rowIndex++);
 
@@ -366,24 +364,24 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	}
 
 	if (rcSpeedGauge && playerContext)
-		rcSpeedGauge->SetMotionTime(playerContext->m_HorizontalVelocity.norm() / (playerContext->m_Is2DMode ? 45.0f : 90.0f) * 100.0f);
+		rcSpeedGauge->SetMotionFrame(playerContext->m_HorizontalVelocity.norm() / (playerContext->m_Is2DMode ? 45.0f : 90.0f) * 100.0f);
 
 	if (rcRingEnergyGauge && playerContext)
 	{
 		rcRingEnergyGauge->SetMotion("total_quantity");
-		rcRingEnergyGauge->SetMotionTime(100.0f);
+		rcRingEnergyGauge->SetMotionFrame(100.0f);
 		rcRingEnergyGauge->Update(0.0f);
 
 		playerContext->m_ChaosEnergy = min(playerContext->m_ChaosEnergy, playerContext->GetMaxChaosEnergy());
 
 		rcRingEnergyGauge->SetMotion("size");
-		rcRingEnergyGauge->SetMotionTime(playerContext->m_ChaosEnergy / playerContext->GetMaxChaosEnergy() * 100.0f);
+		rcRingEnergyGauge->SetMotionFrame(playerContext->m_ChaosEnergy / playerContext->GetMaxChaosEnergy() * 100.0f);
 		rcRingEnergyGauge->Update(0.0f);
 	}
 
 	if (rcGaugeFrame)
 	{
-		rcGaugeFrame->SetMotionTime(100.0f);
+		rcGaugeFrame->SetMotionFrame(100.0f);
 	}
 
 	if (rcScoreCount)
