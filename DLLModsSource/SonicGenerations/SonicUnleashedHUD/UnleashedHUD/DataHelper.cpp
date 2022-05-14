@@ -86,6 +86,7 @@ Chao::CSD::RCPtr<Chao::CSD::CScene> rcRingEnergyGauge;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcGaugeFrame;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcScoreCount;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcSpeedCount;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfoCustom;
 boost::shared_ptr<Sonic::CGameObjectCSD> spPlayScreen;
 
 Chao::CSD::RCPtr<Chao::CSD::CProject> rcMissionScreen;
@@ -207,6 +208,11 @@ void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, So
 
 	if (rcSpeedCount)
 		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcSpeedCount);
+
+	if (isMission)
+		Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcInfoCustom);
+	else
+		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcInfoCustom);
 
 	Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcPosition);
 	Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcCountdown);
@@ -373,6 +379,32 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 			rcRingCount = rcPlayScreen->CreateScene("ring_count");
 	}
 
+	if (isMission)
+		rcInfoCustom = rcMissionScreen->CreateScene("score_count", rcCountdown ? "conditional_meet_so" : "normal_so");
+
+	else
+	{
+		rcInfoCustom = rcPlayScreen->CreateScene("score_count");
+
+		float count = rcRingCount ? 50.0f : 0.0f;
+		count += rcScoreCount ? 50.0f : 0.0f;
+
+		rcInfoCustom->SetPosition(0, count);
+	}
+
+	rcInfoCustom->GetNode("txt")->SetPatternIndex(2);
+	rcInfoCustom->GetNode("score")->SetHideFlag(true);
+
+	const auto& rcTxtLarge = rcInfoCustom->GetNode("txt_l");
+	if (rcTxtLarge)
+		rcTxtLarge->SetPatternIndex(2);
+
+	const auto& rcScoreLarge = rcInfoCustom->GetNode("score_l");
+	if (rcScoreLarge)
+		rcScoreLarge->SetHideFlag(true);
+
+	FreezeMotion(rcInfoCustom.Get(), false);
+
 	flags &= ~(0x1 | 0x2 | 0x4 | 0x200 | 0x800 | 0x1000000); // Mask to prevent crash when game tries accessing the elements we disabled later on
 
 	CreateScreen(This);
@@ -517,6 +549,22 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 			rcMissionTarget->Update();
 			const auto position = rcItemCount->GetNode("ring")->GetPosition() - rcImgIcon->GetPosition();
 			rcImgIcon->SetPosition(position.x(), position.y());
+		}
+	}
+
+	if (rcInfoCustom)
+	{
+		const auto& position = SetMissionScenePosition(rcInfoCustom.Get(), rowIndex++);
+
+		for (size_t i = 0; i < 2; i++)
+		{
+			const auto& rcScene = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1C8))[i];
+			if (!rcScene)
+				continue;
+
+			rcScene->GetNode("position")->SetScale(0.8f, 0.8f);
+			rcScene->GetNode("bg")->SetHideFlag(true);
+			rcScene->SetPosition(position.x() + 6.0f, position.y() - 103.0f);
 		}
 	}
 
