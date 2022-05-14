@@ -85,9 +85,6 @@ Chao::CSD::RCPtr<Chao::CSD::CScene> rcSpeedGauge;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcRingEnergyGauge;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcGaugeFrame;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcScoreCount;
-Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfo;
-Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfoTimeCount;
-Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfoRank;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcSpeedCount;
 boost::shared_ptr<Sonic::CGameObjectCSD> spPlayScreen;
 
@@ -96,6 +93,10 @@ Chao::CSD::RCPtr<Chao::CSD::CScene> rcPosition;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcCountdown;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcItemCount;
 boost::shared_ptr<Sonic::CGameObjectCSD> spMissionScreen;
+
+Chao::CSD::RCPtr<Chao::CSD::CProject> rcPlayScreenEv;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcRingGet;
+boost::shared_ptr<Sonic::CGameObjectCSD> spPlayScreenEv;
 
 size_t prevRingCount;
 bool isMission;
@@ -113,6 +114,9 @@ void CreateScreen(Sonic::CGameObject* pParentGameObject)
 
 	if (rcMissionScreen && !spMissionScreen)
 		pParentGameObject->m_pMember->m_pGameDocument->AddGameObject(spMissionScreen = boost::make_shared<Sonic::CGameObjectCSD>(rcMissionScreen, 0.5f, "HUD_B1", false), "main", pParentGameObject);
+
+	if (rcPlayScreenEv && !spPlayScreenEv)
+		pParentGameObject->m_pMember->m_pGameDocument->AddGameObject(spPlayScreenEv = boost::make_shared<Sonic::CGameObjectCSD>(rcPlayScreenEv, 0.5f, "HUD_B1", false), "main", pParentGameObject);
 }
 
 void KillScreen()
@@ -128,6 +132,12 @@ void KillScreen()
 		spMissionScreen->SendMessage(spMissionScreen->m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
 		spMissionScreen = nullptr;
 	}
+
+	if (spPlayScreenEv)
+	{
+		spPlayScreenEv->SendMessage(spPlayScreenEv->m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
+		spPlayScreenEv = nullptr;
+	}
 }
 
 void ToggleScreen(const bool visible, Sonic::CGameObject* pParentGameObject)
@@ -138,19 +148,21 @@ void ToggleScreen(const bool visible, Sonic::CGameObject* pParentGameObject)
 		KillScreen();
 }
 
-void SetMissionScenePosition(Chao::CSD::CScene* pScene, const size_t index)
+hh::math::CVector2 SetMissionScenePosition(Chao::CSD::CScene* pScene, const size_t index)
 {
 	char name[4];
 	sprintf(name, "%02d", index);
 	const auto position = rcPosition->GetNode(name)->GetPosition();
 	pScene->SetPosition(position.x(), position.y());
+	return position;
 }
 
-void FreezeMotion(Chao::CSD::CScene* pScene)
+void FreezeMotion(Chao::CSD::CScene* pScene, bool end = true)
 {
-	pScene->SetMotionFrame(pScene->m_MotionEndFrame);
+	pScene->SetMotionFrame(end ? pScene->m_MotionEndFrame : 0.0f);
 	pScene->m_MotionSpeed = 0.0f;
 	pScene->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+	pScene->m_MotionDisableFlag = true;
 }
 
 void GetTime(Sonic::CGameDocument* pGameDocument, size_t* minutes, size_t* seconds, size_t* milliseconds)
@@ -172,22 +184,6 @@ float GetTime(Sonic::CGameDocument* pGameDocument)
 	return max(0, max(0, *(float*)(pMember + 0x184)) + *(float*)(pMember + 0x18C));
 }
 
-float GetRankTime(Sonic::CGameObject* This)
-{
-	const float time = GetTime(**This->m_pMember->m_pGameDocument) * 100.0f;
-	const auto pRankTime = (float*)((char*)This + 0x308);
-
-	size_t i = 0;
-	while (pRankTime[i] < time)
-	{
-		i++;
-		if (i >= 4)
-			break;
-	}
-
-	return pRankTime[i] / 100.0f;
-}
-
 void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, Sonic::CGameDocument* pGameDocument)
 {
 	KillScreen();
@@ -199,7 +195,11 @@ void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, So
 	else
 		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcTimeCount);
 
-	Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcRingCount);
+	if (isMission)
+		Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcRingCount);
+	else
+		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcRingCount);
+
 	Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcSpeedGauge);
 	Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcRingEnergyGauge);
 	Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcGaugeFrame);
@@ -208,14 +208,15 @@ void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, So
 	if (rcSpeedCount)
 		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcSpeedCount);
 
-	if (rcInfo)
-		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcInfo);
-
 	Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcPosition);
 	Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcCountdown);
+	Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcItemCount);
+
+	Chao::CSD::CProject::DestroyScene(rcPlayScreenEv.Get(), rcRingGet);
 
 	rcPlayScreen = nullptr;
 	rcMissionScreen = nullptr;
+	rcPlayScreenEv = nullptr;
 	isMission = false;
 }
 
@@ -266,6 +267,13 @@ HOOK(void, __fastcall, ProcMsgNotifyLapTimeHud, 0x1097640, Sonic::CGameObject* T
 	spSpeed03 = nullptr;
 }
 
+HOOK(void, __fastcall, CCountdownUpdate, 0x124F360, void* This, void* Edx, const hh::fnd::SUpdateInfo& in_rUpdateInfo)
+{
+	const auto& rcScene = *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)(*(char**)((char*)This + 0xAC) + 0x14);
+	rcScene->SetHideFlag(true);
+	originalCCountdownUpdate(This, Edx, in_rUpdateInfo);
+}
+
 HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObject* This)
 {
 	ScoreGenerationsAPI::SetVisibility(false);
@@ -279,6 +287,9 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 
 	spCsdProject = wrapper.GetCsdProject("ui_missionscreen");
 	rcMissionScreen = spCsdProject->m_rcProject;
+
+	spCsdProject = wrapper.GetCsdProject("ui_playscreen_ev");
+	rcPlayScreenEv = spCsdProject->m_rcProject;
 
 	rcPosition = rcMissionScreen->CreateScene("position");
 
@@ -303,26 +314,6 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 			rcTimeCount = rcPlayScreen->CreateScene("time_count");
 	}
 
-	if (flags & 0x1000000 || rcCountdown) // Rank
-	{
-		rcInfo = rcPlayScreen->CreateScene("u_info", "Intro_Anim");
-		rcInfo->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
-		rcInfo->SetMotionFrame(rcInfo->m_MotionEndFrame);
-		rcInfo->SetPosition(0, -521);
-
-		rcInfoRank = rcPlayScreen->CreateScene("time_count");
-		rcInfoRank->GetNode("bg_1")->SetHideFlag(true);
-		rcInfoRank->GetNode("bg_2")->SetHideFlag(true);
-		rcInfoRank->GetNode("txt")->SetHideFlag(true);
-		rcInfoRank->SetPosition(945, -27);
-
-		rcInfoTimeCount = rcPlayScreen->CreateScene("time_count");
-		rcInfoTimeCount->GetNode("bg_1")->SetHideFlag(true);
-		rcInfoTimeCount->GetNode("bg_2")->SetHideFlag(true);
-		rcInfoTimeCount->GetNode("txt")->SetHideFlag(true);
-		rcInfoTimeCount->SetPosition(945, -77);
-	}
-
 	if (flags & 0x20000) // Mission Target
 	{
 		rcItemCount = rcMissionScreen->CreateScene("item_count", "conditional_meet_so");
@@ -335,9 +326,6 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		rcItemCount->GetNode("num_deno")->SetText(text);
 	}
 
-	if (flags & 0x4 || Common::GetCurrentStageID() == SMT_bsd) // Rings
-		rcRingCount = rcPlayScreen->CreateScene("ring_count");
-
 	if (flags & 0x200) // Boost Gauge
 	{
 		rcSpeedGauge = rcPlayScreen->CreateScene("so_speed_gauge");
@@ -349,10 +337,43 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		FreezeMotion(rcGaugeFrame.Get());
 	}
 
-	flags &= ~(0x1 | 0x2 | 0x4 | 0x200 | 0x800); // Mask to prevent crash when game tries accessing the elements we disabled later on
-
 	if (ScoreGenerationsAPI::IsAttached() && !ScoreGenerationsAPI::IsStageForbidden()) // Score
 		rcScoreCount = rcPlayScreen->CreateScene("score_count");
+
+	if (flags & 0x4 || Common::GetCurrentStageID() == SMT_bsd) // Rings
+	{
+		// Re-purpose score for Classic
+		if (!rcSpeedGauge)
+		{
+			if (isMission)
+				rcRingCount = rcMissionScreen->CreateScene("score_count", rcCountdown ? "conditional_meet_so" : "normal_so");
+			else 
+				rcRingCount = rcPlayScreen->CreateScene("score_count");
+
+			rcRingCount->GetNode("txt")->SetPatternIndex(1);
+
+			const auto& rcTxtLarge = rcRingCount->GetNode("txt_l");
+			if (rcTxtLarge)
+				rcTxtLarge->SetPatternIndex(1);
+
+			rcRingGet = rcPlayScreenEv->CreateScene("ring_get");
+			if (rcCountdown)
+				rcRingGet->GetNode("ring_img")->SetScale(0.72f, 0.72f);
+
+			if (rcScoreCount)
+			{
+				rcRingCount->SetPosition(0, 50);
+				rcRingGet->SetPosition(0, 50);
+			}
+
+			FreezeMotion(rcRingCount.Get(), false);
+			FreezeMotion(rcRingGet.Get());
+		}
+		else
+			rcRingCount = rcPlayScreen->CreateScene("ring_count");
+	}
+
+	flags &= ~(0x1 | 0x2 | 0x4 | 0x200 | 0x800 | 0x1000000); // Mask to prevent crash when game tries accessing the elements we disabled later on
 
 	CreateScreen(This);
 }
@@ -379,93 +400,28 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		}
 	}
 
-	if (rcTimeCount || rcInfoTimeCount)
+	if (rcTimeCount)
 	{
-		auto& rcHandle = rcInfoTimeCount ? rcInfoTimeCount : rcTimeCount;
-
 		size_t minutes, seconds, milliseconds;
 		GetTime(**This->m_pMember->m_pGameDocument, &minutes, &seconds, &milliseconds);
 
 		sprintf(text, "%02d", milliseconds);
-		rcHandle->GetNode("time001")->SetText(text);
+		rcTimeCount->GetNode("time001")->SetText(text);
 
 		sprintf(text, "%02d", seconds);
-		rcHandle->GetNode("time010")->SetText(text);
+		rcTimeCount->GetNode("time010")->SetText(text);
 
 		sprintf(text, "%02d", minutes);
-		rcHandle->GetNode("time100")->SetText(text);
+		rcTimeCount->GetNode("time100")->SetText(text);
 
-		if (isMission && rcHandle == rcTimeCount)
+		if (isMission)
 			SetMissionScenePosition(rcTimeCount.Get(), rowIndex++);
-	}
-
-	if (rcInfoRank)
-	{
-		const float rankTime = GetRankTime(This);
-
-		sprintf(text, "%02d", (int)(rankTime * 100.0f) % 100);
-		rcInfoRank->GetNode("time001")->SetText(text);
-
-		sprintf(text, "%02d", (int)rankTime % 60);
-		rcInfoRank->GetNode("time010")->SetText(text);
-
-		sprintf(text, "%02d", (int)(rankTime / 60));
-		rcInfoRank->GetNode("time100")->SetText(text);
-
-		const auto& rcRankTime = *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1D8);
-		rcRankTime->GetNode("bg")->SetHideFlag(true);
-
-		constexpr float scale = 0.6f;
-
-		rcRankTime->GetNode("icon_0")->SetScale(scale, scale);
-		rcRankTime->GetNode("icon_1")->SetScale(scale, scale);
-		rcRankTime->GetNode("icon_2")->SetScale(scale, scale);
-		rcRankTime->GetNode("icon_3")->SetScale(scale, scale);
-		rcRankTime->GetNode("icon_4")->SetScale(scale, scale);
-
-		rcRankTime->GetNode("num_time_0")->SetHideFlag(true);
-		rcRankTime->GetNode("num_time_1")->SetHideFlag(true);
-		rcRankTime->GetNode("num_time_2")->SetHideFlag(true);
-		rcRankTime->GetNode("num_time_3")->SetHideFlag(true);
-		rcRankTime->GetNode("num_time_4")->SetHideFlag(true);
-		rcRankTime->SetPosition(776, -76);
 	}
 
 	if (rcCountdown)
 		SetMissionScenePosition(rcCountdown.Get(), rowIndex++);
 
-	if (rcItemCount)
-	{
-		const size_t count = *(size_t*)((char*)This + 0x300);
-		sprintf(text, "%03d", count);
-		rcItemCount->GetNode("num_nume")->SetText(text);
-		rcItemCount->SetMotionFrame(count >= itemCountDenominator ? rcItemCount->m_MotionEndFrame : 0.0f);
-
-		SetMissionScenePosition(rcItemCount.Get(), rowIndex++);
-
-		for (size_t i = 0; i < 2; i++)
-		{
-			const auto& rcMissionTarget = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x130))[i];
-			const auto& rcImgIcon = rcMissionTarget->GetNode("img_icon");
-			rcImgIcon->SetPosition(0, 0);
-			rcMissionTarget->Update();
-			const auto position = rcItemCount->GetNode("ring")->GetPosition() - rcImgIcon->GetPosition();
-			rcImgIcon->SetPosition(position.x(), position.y());
-		}
-	}
-
 	const auto playerContext = Sonic::Player::CPlayerSpeedContext::GetInstance();
-
-	if (rcRingCount && playerContext)
-	{
-		sprintf(text, "%03d", playerContext->m_RingCount);
-		rcRingCount->GetNode("num_ring")->SetText(text);
-
-		if (prevRingCount < playerContext->m_RingCount)
-			spPlayScreen->m_rcProject->CreateScene("ring_get")->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
-
-		prevRingCount = playerContext->m_RingCount;
-	}
 
 	if (rcSpeedGauge && playerContext)
 		rcSpeedGauge->SetMotionFrame(playerContext->m_HorizontalVelocity.norm() / (playerContext->m_Is2DMode ? 45.0f : 90.0f) * 100.0f);
@@ -492,6 +448,76 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	{
 		sprintf(text, "%08d", ScoreGenerationsAPI::GetScore());
 		rcScoreCount->GetNode("score")->SetText(text);
+	}
+
+	if (rcRingCount && playerContext)
+	{
+		sprintf(text, "%03d", playerContext->m_RingCount);
+
+		// Classic
+		if (!rcSpeedGauge)
+		{
+			rcRingCount->GetNode("score")->SetText(text);
+
+			const auto& rcScoreLarge = rcRingCount->GetNode("score_l");
+			if (rcScoreLarge)
+				rcScoreLarge->SetText(text);
+
+			if (isMission)
+			{
+				const auto position = SetMissionScenePosition(rcRingCount.Get(), rowIndex++);
+				rcRingGet->SetPosition(position.x() - (rcCountdown ? 106 : 128), position.y() - (rcCountdown ? 199.5f : 200));
+			}
+
+			if (prevRingCount < playerContext->m_RingCount && rcRingGet->m_MotionDisableFlag)
+			{
+				rcRingGet->SetMotion("get_Anim");
+				rcRingGet->SetMotionFrame(0.0f);
+				rcRingGet->m_MotionDisableFlag = false;
+				rcRingGet->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+				rcRingGet->m_MotionSpeed = 1.0f;
+				rcRingGet->Update();
+			}
+		}
+
+		// Modern
+		else
+		{
+			rcRingCount->GetNode("num_ring")->SetText(text);
+
+			if (prevRingCount < playerContext->m_RingCount)
+				spPlayScreen->m_rcProject->CreateScene("ring_get")->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
+		}
+
+		prevRingCount = playerContext->m_RingCount;
+	}
+
+	if (rcItemCount)
+	{
+		const size_t count = *(size_t*)((char*)This + 0x300);
+		sprintf(text, "%03d", count);
+		rcItemCount->GetNode("num_nume")->SetText(text);
+		rcItemCount->SetMotionFrame(count >= itemCountDenominator ? rcItemCount->m_MotionEndFrame : 0.0f);
+
+		SetMissionScenePosition(rcItemCount.Get(), rowIndex++);
+
+		for (size_t i = 0; i < 2; i++)
+		{
+			const auto& rcMissionTarget = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x130))[i];
+			if (!rcMissionTarget)
+				continue;
+			
+			rcMissionTarget->GetNode("bg")->SetHideFlag(true);
+			rcMissionTarget->GetNode("SXY")->SetHideFlag(true);
+			rcMissionTarget->GetNode("num_deno")->SetHideFlag(true);
+			rcMissionTarget->GetNode("img_slash")->SetHideFlag(true);
+
+			const auto& rcImgIcon = rcMissionTarget->GetNode("img_icon");
+			rcImgIcon->SetPosition(0, 0);
+			rcMissionTarget->Update();
+			const auto position = rcItemCount->GetNode("ring")->GetPosition() - rcImgIcon->GetPosition();
+			rcImgIcon->SetPosition(position.x(), position.y());
+		}
 	}
 
 	if (rcSpeedCount)
@@ -541,6 +567,7 @@ void HookFunctions()
 	INSTALL_HOOK(ProcMsgGetMissionCondition);
 	INSTALL_HOOK(ProcMsgNotifyLapTimeHud);
 	INSTALL_HOOK(CHudSonicStageDelayProcessImp);
+	INSTALL_HOOK(CCountdownUpdate);
 	INSTALL_HOOK(CHudSonicStageUpdateParallel);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
 
@@ -550,6 +577,7 @@ void HookFunctions()
 	WRITE_MEMORY(0x109B8F5, uint8_t, 0x90, 0xE9); // Disable boost gauge
 	WRITE_MEMORY(0x109BC88, uint8_t, 0x90, 0xE9); // Disable boost button
 	//WRITE_MEMORY(0x109BEF0, uint8_t, 0x90, 0xE9); // Disable mission countdown
+	WRITE_MEMORY(0x109C3E2, uint8_t, 0x90, 0xE9); // Disable mission rank
 }
 
 extern "C" __declspec(dllexport) void PostInit()
