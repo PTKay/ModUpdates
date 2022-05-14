@@ -85,6 +85,8 @@ Chao::CSD::RCPtr<Chao::CSD::CScene> rcSpeedGauge;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcRingEnergyGauge;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcGaugeFrame;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcScoreCount;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfo;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcSpeedCount;
 boost::shared_ptr<Sonic::CGameObjectCSD> spPlayScreen;
 
 Chao::CSD::RCPtr<Chao::CSD::CProject> rcMissionScreen;
@@ -96,6 +98,11 @@ boost::shared_ptr<Sonic::CGameObjectCSD> spMissionScreen;
 size_t prevRingCount;
 bool isMission;
 size_t itemCountDenominator;
+float speed;
+
+boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed01;
+boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed02[3];
+boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed03;
 
 void CreateScreen(Sonic::CGameObject* pParentGameObject)
 {
@@ -174,6 +181,12 @@ void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, So
 	Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcGaugeFrame);
 	Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcScoreCount);
 
+	if (rcSpeedCount)
+		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcSpeedCount);
+
+	if (rcInfo)
+		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcInfo);
+
 	Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcPosition);
 	Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcCountdown);
 
@@ -210,6 +223,24 @@ HOOK(void, __fastcall, ProcMsgGetMissionCondition, 0xD0F130, Sonic::CGameObject*
 {
 	originalProcMsgGetMissionCondition(This, Edx, in_rMsg);
 	itemCountDenominator = *(size_t*)((char*)&in_rMsg + 20);
+}
+
+HOOK(void, __fastcall, ProcMsgNotifyLapTimeHud, 0x1097640, Sonic::CGameObject* This, void* Edx, hh::fnd::Message& in_rMsg)
+{
+	if (!rcPlayScreen)
+		return;
+
+	rcSpeedCount = rcPlayScreen->CreateScene("speed_count");
+	rcSpeedCount->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+
+	const auto playerContext = Sonic::Player::CPlayerSpeedContext::GetInstance();
+	speed = playerContext->GetVelocity().norm() / (playerContext->m_Is2DMode ? 45.0f : 90.0f) * 1000.0f;
+
+	spSpeed01 = nullptr;
+	for (size_t i = 0; i < _countof(spSpeed02); i++)
+		spSpeed02[i] = nullptr;
+
+	spSpeed03 = nullptr;
 }
 
 HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObject* This)
@@ -249,8 +280,12 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 			rcTimeCount = rcPlayScreen->CreateScene("time_count");
 	}
 
-	if (flags & 0x1000000) // Rank
+	if (flags & 0x1000000 || rcCountdown) // Rank
 	{
+		rcInfo = rcPlayScreen->CreateScene("u_info", "Intro_Anim");
+		rcInfo->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcInfo->SetMotionFrame(rcInfo->m_MotionEndFrame);
+		rcInfo->SetPosition(0, -521);
 	}
 
 	if (flags & 0x20000) // Mission Target
@@ -389,12 +424,53 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		sprintf(text, "%08d", ScoreGenerationsAPI::GetScore());
 		rcScoreCount->GetNode("score")->SetText(text);
 	}
+
+	if (rcSpeedCount)
+	{
+		if (rcSpeedCount->m_MotionDisableFlag)
+			Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcSpeedCount);
+
+		else
+		{
+			const float frames[] = { 87, 105, 123, 145 };
+
+			if (rcSpeedCount->m_MotionFrame < frames[0])
+			{
+				if (!spSpeed01)
+					spSpeed01 = playerContext->PlaySound(39, 0);
+			}
+			else
+				spSpeed01 = nullptr;
+
+			sprintf(text, " %03d", rand() % 1000);
+			sprintf(text + 16, "%04d", (int)speed);
+
+			for (size_t i = 0; i < 4; i++)
+			{
+				if (rcSpeedCount->m_MotionFrame > frames[i])
+				{
+					text[3 - i] = text[19 - i];
+
+					auto& rHandle = i < 3 ? spSpeed02[i] : spSpeed03;
+					if (!rHandle)
+						rHandle = playerContext->PlaySound(i < 3 ? 40 : 41, 0);
+				}
+			}
+
+			char* pText = text[0] == ' ' ? text + 1 : text;
+
+			rcSpeedCount->GetNode("num_speed")->SetText(pText);
+			rcSpeedCount->GetNode("num_speed_deep")->SetText(pText);
+			rcSpeedCount->GetNode("num_speed_pale")->SetText(pText);
+		}
+	}
 }
 
 void HookFunctions()
 {
 	INSTALL_HOOK(ProcMsgGetMissionLimitTime);
 	INSTALL_HOOK(ProcMsgGetMissionCondition);
+	INSTALL_HOOK(ProcMsgNotifyLapTimeHud);
 	INSTALL_HOOK(CHudSonicStageDelayProcessImp);
 	INSTALL_HOOK(CHudSonicStageUpdateParallel);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
