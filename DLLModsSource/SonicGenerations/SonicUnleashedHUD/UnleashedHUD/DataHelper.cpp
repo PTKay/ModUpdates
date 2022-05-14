@@ -86,6 +86,8 @@ Chao::CSD::RCPtr<Chao::CSD::CScene> rcRingEnergyGauge;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcGaugeFrame;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcScoreCount;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfo;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfoTimeCount;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcInfoRank;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcSpeedCount;
 boost::shared_ptr<Sonic::CGameObjectCSD> spPlayScreen;
 
@@ -107,7 +109,7 @@ boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed03;
 void CreateScreen(Sonic::CGameObject* pParentGameObject)
 {
 	if (rcPlayScreen && !spPlayScreen)
-		pParentGameObject->m_pMember->m_pGameDocument->AddGameObject(spPlayScreen = boost::make_shared<Sonic::CGameObjectCSD>(rcPlayScreen, 0.5f, "HUD", false), "main", pParentGameObject);
+		pParentGameObject->m_pMember->m_pGameDocument->AddGameObject(spPlayScreen = boost::make_shared<Sonic::CGameObjectCSD>(rcPlayScreen, 0.5f, "HUD_B1", false), "main", pParentGameObject);
 
 	if (rcMissionScreen && !spMissionScreen)
 		pParentGameObject->m_pMember->m_pGameDocument->AddGameObject(spMissionScreen = boost::make_shared<Sonic::CGameObjectCSD>(rcMissionScreen, 0.5f, "HUD_B1", false), "main", pParentGameObject);
@@ -164,6 +166,28 @@ void GetTime(Sonic::CGameDocument* pGameDocument, size_t* minutes, size_t* secon
 	}
 }
 
+float GetTime(Sonic::CGameDocument* pGameDocument)
+{
+	const auto pMember = (uint8_t*)pGameDocument->m_pMember;
+	return max(0, max(0, *(float*)(pMember + 0x184)) + *(float*)(pMember + 0x18C));
+}
+
+float GetRankTime(Sonic::CGameObject* This)
+{
+	const float time = GetTime(**This->m_pMember->m_pGameDocument) * 100.0f;
+	const auto pRankTime = (float*)((char*)This + 0x308);
+
+	size_t i = 0;
+	while (pRankTime[i] < time)
+	{
+		i++;
+		if (i >= 4)
+			break;
+	}
+
+	return pRankTime[i] / 100.0f;
+}
+
 void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, Sonic::CGameDocument* pGameDocument)
 {
 	KillScreen();
@@ -202,8 +226,7 @@ HOOK(void, __fastcall, ProcMsgGetMissionLimitTime, 0xD0F0E0, Sonic::CGameObject*
 		return;
 
 	const float limitTime = *(float*)((char*)&in_rMsg + 16);
-	const auto pMember = (uint8_t*)This->m_pMember->m_pGameDocument->m_pMember;
-	const float elapsedTime = max(0, max(0, *(float*)(pMember + 0x184)) + *(float*)(pMember + 0x18C));
+	const float elapsedTime = GetTime(**This->m_pMember->m_pGameDocument);
 	const float remainingTime = limitTime - elapsedTime;
 
 	char text[16];
@@ -286,6 +309,18 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		rcInfo->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
 		rcInfo->SetMotionFrame(rcInfo->m_MotionEndFrame);
 		rcInfo->SetPosition(0, -521);
+
+		rcInfoRank = rcPlayScreen->CreateScene("time_count");
+		rcInfoRank->GetNode("bg_1")->SetHideFlag(true);
+		rcInfoRank->GetNode("bg_2")->SetHideFlag(true);
+		rcInfoRank->GetNode("txt")->SetHideFlag(true);
+		rcInfoRank->SetPosition(945, -27);
+
+		rcInfoTimeCount = rcPlayScreen->CreateScene("time_count");
+		rcInfoTimeCount->GetNode("bg_1")->SetHideFlag(true);
+		rcInfoTimeCount->GetNode("bg_2")->SetHideFlag(true);
+		rcInfoTimeCount->GetNode("txt")->SetHideFlag(true);
+		rcInfoTimeCount->SetPosition(945, -77);
 	}
 
 	if (flags & 0x20000) // Mission Target
@@ -344,22 +379,56 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		}
 	}
 
-	if (rcTimeCount)
+	if (rcTimeCount || rcInfoTimeCount)
 	{
+		auto& rcHandle = rcInfoTimeCount ? rcInfoTimeCount : rcTimeCount;
+
 		size_t minutes, seconds, milliseconds;
 		GetTime(**This->m_pMember->m_pGameDocument, &minutes, &seconds, &milliseconds);
 
 		sprintf(text, "%02d", milliseconds);
-		rcTimeCount->GetNode("time001")->SetText(text);
+		rcHandle->GetNode("time001")->SetText(text);
 
 		sprintf(text, "%02d", seconds);
-		rcTimeCount->GetNode("time010")->SetText(text);
+		rcHandle->GetNode("time010")->SetText(text);
 
 		sprintf(text, "%02d", minutes);
-		rcTimeCount->GetNode("time100")->SetText(text);
+		rcHandle->GetNode("time100")->SetText(text);
 
-		if (isMission)
+		if (isMission && rcHandle == rcTimeCount)
 			SetMissionScenePosition(rcTimeCount.Get(), rowIndex++);
+	}
+
+	if (rcInfoRank)
+	{
+		const float rankTime = GetRankTime(This);
+
+		sprintf(text, "%02d", (int)(rankTime * 100.0f) % 100);
+		rcInfoRank->GetNode("time001")->SetText(text);
+
+		sprintf(text, "%02d", (int)rankTime % 60);
+		rcInfoRank->GetNode("time010")->SetText(text);
+
+		sprintf(text, "%02d", (int)(rankTime / 60));
+		rcInfoRank->GetNode("time100")->SetText(text);
+
+		const auto& rcRankTime = *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1D8);
+		rcRankTime->GetNode("bg")->SetHideFlag(true);
+
+		constexpr float scale = 0.6f;
+
+		rcRankTime->GetNode("icon_0")->SetScale(scale, scale);
+		rcRankTime->GetNode("icon_1")->SetScale(scale, scale);
+		rcRankTime->GetNode("icon_2")->SetScale(scale, scale);
+		rcRankTime->GetNode("icon_3")->SetScale(scale, scale);
+		rcRankTime->GetNode("icon_4")->SetScale(scale, scale);
+
+		rcRankTime->GetNode("num_time_0")->SetHideFlag(true);
+		rcRankTime->GetNode("num_time_1")->SetHideFlag(true);
+		rcRankTime->GetNode("num_time_2")->SetHideFlag(true);
+		rcRankTime->GetNode("num_time_3")->SetHideFlag(true);
+		rcRankTime->GetNode("num_time_4")->SetHideFlag(true);
+		rcRankTime->SetPosition(776, -76);
 	}
 
 	if (rcCountdown)
