@@ -187,6 +187,28 @@ float GetTime(Sonic::CGameDocument* pGameDocument)
 	return max(0, max(0, *(float*)(pMember + 0x184)) + *(float*)(pMember + 0x18C));
 }
 
+void HandleInfoCustom(const Chao::CSD::RCPtr<Chao::CSD::CScene>& rcScene)
+{
+	constexpr float scale = 0.9f;
+
+	if (const auto rcIconCustom = rcScene->GetNode("icon_custom_0"))
+		rcIconCustom->SetScale(scale, scale);
+
+	if (const auto rcIconCustom = rcScene->GetNode("icon_chao_5"))
+		rcIconCustom->SetScale(scale, scale);
+
+	rcScene->GetNode("position")->SetScale(0.8f, 0.8f);
+	rcScene->GetNode("bg")->SetHideFlag(true);
+	rcScene->GetNode("icon_btn")->SetHideFlag(true);
+	rcScene->GetNode("brilliance")->SetHideFlag(true);
+	rcScene->SetPosition(infoCustomPos.x() + (rcCountdown ? 34.0f : -15.0f), infoCustomPos.y() - 103.0f);
+}
+
+const Chao::CSD::RCPtr<Chao::CSD::CScene>& GetGpSonicSafeScene(void* This)
+{
+	return *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)(*(char**)((char*)This + 0xAC) + 0x14);
+}
+
 void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, Sonic::CGameDocument* pGameDocument)
 {
 	KillScreen();
@@ -277,9 +299,14 @@ HOOK(void, __fastcall, ProcMsgNotifyLapTimeHud, 0x1097640, Sonic::CGameObject* T
 
 HOOK(void, __fastcall, CCountdownUpdate, 0x124F360, void* This, void* Edx, const hh::fnd::SUpdateInfo& in_rUpdateInfo)
 {
-	const auto& rcScene = *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)(*(char**)((char*)This + 0xAC) + 0x14);
-	rcScene->SetHideFlag(true);
+	GetGpSonicSafeScene(This)->SetHideFlag(true);
 	originalCCountdownUpdate(This, Edx, in_rUpdateInfo);
+}
+
+HOOK(void, __fastcall, CLastBossGaugeNewUpdate, 0x124E930, void* This, void* Edx, const hh::fnd::SUpdateInfo& in_rUpdateInfo)
+{
+	HandleInfoCustom(GetGpSonicSafeScene(This));
+	originalCLastBossGaugeNewUpdate(This, Edx, in_rUpdateInfo);
 }
 
 HOOK(void, __fastcall, ProcMsgChangeCustomHud, 0x1096FF0, Sonic::CGameObject* This, void* Edx, hh::fnd::Message& in_rMsg)
@@ -371,7 +398,7 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	if (ScoreGenerationsAPI::IsAttached() && !ScoreGenerationsAPI::IsStageForbidden()) // Score
 		rcScoreCount = rcPlayScreen->CreateScene("score_count");
 
-	if (flags & 0x4 || Common::GetCurrentStageID() == SMT_bsd) // Rings
+	if (flags & 0x400004 || Common::GetCurrentStageID() == SMT_bsd) // Rings
 	{
 		// Re-purpose score for Classic
 		if (!rcSpeedGauge)
@@ -427,7 +454,7 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 
 	FreezeMotion(rcInfoCustom.Get(), false);
 
-	flags &= ~(0x1 | 0x2 | 0x4 | 0x200 | 0x800 | 0x1000000); // Mask to prevent crash when game tries accessing the elements we disabled later on
+	flags &= ~(0x1 | 0x2 | 0x400004 | 0x200 | 0x800 | 0x1000000); // Mask to prevent crash when game tries accessing the elements we disabled later on
 
 	CreateScreen(This);
 }
@@ -548,7 +575,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	if (rcInfoCustom)
 	{
 		const bool multiple = *(size_t*)((char*)This + 572) > 0;
-		const bool single = *(bool*)((char*)This + 580);
+		const bool single = *(bool*)((char*)This + 580) || strcmp((const char*)0x1E774D4, "blb") == 0;
 		const bool visible = multiple || single;
 
 		rcInfoCustom->SetHideFlag(!visible);
@@ -561,26 +588,14 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 				rcInfoCustom->GetNode("num_deno")->SetText("1");
 			}
 
-			const auto position = isMission ? SetMissionScenePosition(rcInfoCustom.Get(), rowIndex++) : infoCustomPos;
+			if (isMission)
+				infoCustomPos = SetMissionScenePosition(rcInfoCustom.Get(), rowIndex++);
 
 			for (size_t i = 0; i < 2; i++)
 			{
 				const auto& rcScene = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1C8))[i];
-				if (!rcScene)
-					continue;
-
-				constexpr float scale = 0.9f;
-
-				if (const auto rcIconCustom = rcScene->GetNode("icon_custom_0"))
-					rcIconCustom->SetScale(scale, scale);
-
-				if (const auto rcIconCustom = rcScene->GetNode("icon_chao_5"))
-					rcIconCustom->SetScale(scale, scale);
-
-				rcScene->GetNode("position")->SetScale(0.8f, 0.8f);
-				rcScene->GetNode("bg")->SetHideFlag(true);
-				rcScene->GetNode("icon_btn")->SetHideFlag(true);
-				rcScene->SetPosition(position.x() + (rcCountdown ? 34.0f : -15.0f), position.y() - 103.0f);
+				if (rcScene)
+					HandleInfoCustom(rcScene);
 			}
 		}
 	}
@@ -661,6 +676,7 @@ void HookFunctions()
 	INSTALL_HOOK(ProcMsgNotifyLapTimeHud);
 	INSTALL_HOOK(CHudSonicStageDelayProcessImp);
 	INSTALL_HOOK(CCountdownUpdate);
+	INSTALL_HOOK(CLastBossGaugeNewUpdate);
 	INSTALL_HOOK(ProcMsgChangeCustomHud);
 	INSTALL_HOOK(CHudSonicStageUpdateParallel);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
@@ -672,6 +688,7 @@ void HookFunctions()
 	WRITE_MEMORY(0x109BC88, uint8_t, 0x90, 0xE9); // Disable boost button
 	//WRITE_MEMORY(0x109BEF0, uint8_t, 0x90, 0xE9); // Disable mission countdown
 	WRITE_MEMORY(0x109C3E2, uint8_t, 0x90, 0xE9); // Disable mission rank
+	WRITE_MEMORY(0x109B6A7, uint8_t, 0x90, 0xE9); // Disable Time Eater rings
 }
 
 extern "C" __declspec(dllexport) void PostInit()
