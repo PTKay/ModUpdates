@@ -471,6 +471,8 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	char text[256];
 	size_t rowIndex = 1;
 
+	const size_t flags = ((size_t*)This)[151];
+
 	if (rcPlayerCount)
 	{
 		const size_t liveCountAddr = Common::GetMultiLevelAddress(0x1E66B34, { 0x4, 0x1B4, 0x7C, 0x9FDC });
@@ -582,7 +584,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 
 		if (visible)
 		{
-			if (single)
+			if (single && !(flags & 0x100)) // Ignore Cream mission
 			{
 				rcInfoCustom->GetNode("num_nume")->SetText("1");
 				rcInfoCustom->GetNode("num_deno")->SetText("1");
