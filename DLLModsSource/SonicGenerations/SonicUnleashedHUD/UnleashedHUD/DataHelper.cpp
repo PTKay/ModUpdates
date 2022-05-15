@@ -103,6 +103,8 @@ size_t prevRingCount;
 bool isMission;
 size_t itemCountDenominator;
 float speed;
+size_t actionCount;
+hh::math::CVector2 infoCustomPos;
 
 boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed01;
 boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed02[3];
@@ -196,7 +198,7 @@ void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, So
 	else
 		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcTimeCount);
 
-	if (isMission)
+	if (isMission && !rcSpeedGauge)
 		Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcRingCount);
 	else
 		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcRingCount);
@@ -280,6 +282,29 @@ HOOK(void, __fastcall, CCountdownUpdate, 0x124F360, void* This, void* Edx, const
 	originalCCountdownUpdate(This, Edx, in_rUpdateInfo);
 }
 
+HOOK(void, __fastcall, ProcMsgChangeCustomHud, 0x1096FF0, Sonic::CGameObject* This, void* Edx, hh::fnd::Message& in_rMsg)
+{
+	size_t* spriteIndex = (size_t*)((char*)&in_rMsg + 16);
+	size_t* spriteCount = (size_t*)((char*)&in_rMsg + 20);
+
+	if (rcInfoCustom)
+	{
+		actionCount = *spriteCount > 0 ? max(actionCount, *spriteCount) : 0;
+
+		char text[16];
+
+		sprintf(text, "%d", *spriteCount);
+		rcInfoCustom->GetNode("num_nume")->SetText(text);
+
+		sprintf(text, "%d", actionCount);
+		rcInfoCustom->GetNode("num_deno")->SetText(text);
+	}
+
+	*spriteCount = *spriteCount > 0 ? 1 : 0;
+
+	originalProcMsgChangeCustomHud(This, Edx, in_rMsg);
+}
+
 HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObject* This)
 {
 	ScoreGenerationsAPI::SetVisibility(false);
@@ -353,13 +378,12 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		{
 			if (isMission)
 				rcRingCount = rcMissionScreen->CreateScene("score_count", rcCountdown ? "conditional_meet_so" : "normal_so");
-			else 
+			else
 				rcRingCount = rcPlayScreen->CreateScene("score_count");
 
 			rcRingCount->GetNode("txt")->SetPatternIndex(1);
 
-			const auto& rcTxtLarge = rcRingCount->GetNode("txt_l");
-			if (rcTxtLarge)
+			if (const auto rcTxtLarge = rcRingCount->GetNode("txt_l"))
 				rcTxtLarge->SetPatternIndex(1);
 
 			rcRingGet = rcPlayScreenEv->CreateScene("ring_get");
@@ -380,28 +404,26 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	}
 
 	if (isMission)
-		rcInfoCustom = rcMissionScreen->CreateScene("score_count", rcCountdown ? "conditional_meet_so" : "normal_so");
+	{
+		rcInfoCustom = rcMissionScreen->CreateScene(rcCountdown ? "item_count" : "item_count_s", "conditional_meet_so");
+		rcInfoCustom->SetHideFlag(true);
+		rcInfoCustom->GetNode("txt")->SetPatternIndex(1);
 
+		if (const auto rcIcons = rcInfoCustom->GetNode("icons"))
+			rcIcons->SetHideFlag(true);
+	}
 	else
 	{
-		rcInfoCustom = rcPlayScreen->CreateScene("score_count");
+		rcInfoCustom = rcPlayScreen->CreateScene("item_count", "conditional_meet_so");
 
-		float count = rcRingCount ? 50.0f : 0.0f;
-		count += rcScoreCount ? 50.0f : 0.0f;
+		float offset = rcScoreCount ? 50 : 0;
+		offset += !rcSpeedGauge && rcRingCount ? 50 : 0;
 
-		rcInfoCustom->SetPosition(0, count);
+		infoCustomPos.x() = 128.0f;
+		infoCustomPos.y() = 200 + offset;
+
+		rcInfoCustom->SetPosition(0, offset);
 	}
-
-	rcInfoCustom->GetNode("txt")->SetPatternIndex(2);
-	rcInfoCustom->GetNode("score")->SetHideFlag(true);
-
-	const auto& rcTxtLarge = rcInfoCustom->GetNode("txt_l");
-	if (rcTxtLarge)
-		rcTxtLarge->SetPatternIndex(2);
-
-	const auto& rcScoreLarge = rcInfoCustom->GetNode("score_l");
-	if (rcScoreLarge)
-		rcScoreLarge->SetHideFlag(true);
 
 	FreezeMotion(rcInfoCustom.Get(), false);
 
@@ -491,8 +513,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		{
 			rcRingCount->GetNode("score")->SetText(text);
 
-			const auto& rcScoreLarge = rcRingCount->GetNode("score_l");
-			if (rcScoreLarge)
+			if (const auto rcScoreLarge = rcRingCount->GetNode("score_l"))
 				rcScoreLarge->SetText(text);
 
 			if (isMission)
@@ -524,6 +545,41 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		prevRingCount = playerContext->m_RingCount;
 	}
 
+	if (rcInfoCustom)
+	{
+		const bool multiple = *(size_t*)((char*)This + 572) > 0;
+		const bool single = *(bool*)((char*)This + 580);
+
+		rcInfoCustom->SetHideFlag(!multiple && !single);
+		if (single)
+		{
+			rcInfoCustom->GetNode("num_nume")->SetText("1");
+			rcInfoCustom->GetNode("num_deno")->SetText("1");
+		}
+
+		const auto position = isMission ? SetMissionScenePosition(rcInfoCustom.Get(), rowIndex++) : infoCustomPos;
+
+		for (size_t i = 0; i < 2; i++)
+		{
+			const auto& rcScene = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1C8))[i];
+			if (!rcScene)
+				continue;
+
+			constexpr float scale = 0.9f;
+
+			if (const auto rcIconCustom = rcScene->GetNode("icon_custom_0"))
+				rcIconCustom->SetScale(scale, scale);
+
+			if (const auto rcIconCustom = rcScene->GetNode("icon_chao_5"))
+				rcIconCustom->SetScale(scale, scale);
+
+			rcScene->GetNode("position")->SetScale(0.8f, 0.8f);
+			rcScene->GetNode("bg")->SetHideFlag(true);
+			rcScene->GetNode("icon_btn")->SetHideFlag(true);
+			rcScene->SetPosition(position.x() + (rcCountdown ? 34.0f : -15.0f), position.y() - 103.0f);
+		}
+	}
+
 	if (rcItemCount)
 	{
 		const size_t count = *(size_t*)((char*)This + 0x300);
@@ -538,33 +594,17 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 			const auto& rcMissionTarget = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x130))[i];
 			if (!rcMissionTarget)
 				continue;
-			
+
 			rcMissionTarget->GetNode("bg")->SetHideFlag(true);
 			rcMissionTarget->GetNode("SXY")->SetHideFlag(true);
 			rcMissionTarget->GetNode("num_deno")->SetHideFlag(true);
 			rcMissionTarget->GetNode("img_slash")->SetHideFlag(true);
 
-			const auto& rcImgIcon = rcMissionTarget->GetNode("img_icon");
+			const auto rcImgIcon = rcMissionTarget->GetNode("img_icon");
 			rcImgIcon->SetPosition(0, 0);
 			rcMissionTarget->Update();
 			const auto position = rcItemCount->GetNode("ring")->GetPosition() - rcImgIcon->GetPosition();
 			rcImgIcon->SetPosition(position.x(), position.y());
-		}
-	}
-
-	if (rcInfoCustom)
-	{
-		const auto& position = SetMissionScenePosition(rcInfoCustom.Get(), rowIndex++);
-
-		for (size_t i = 0; i < 2; i++)
-		{
-			const auto& rcScene = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1C8))[i];
-			if (!rcScene)
-				continue;
-
-			rcScene->GetNode("position")->SetScale(0.8f, 0.8f);
-			rcScene->GetNode("bg")->SetHideFlag(true);
-			rcScene->SetPosition(position.x() + 6.0f, position.y() - 103.0f);
 		}
 	}
 
@@ -616,6 +656,7 @@ void HookFunctions()
 	INSTALL_HOOK(ProcMsgNotifyLapTimeHud);
 	INSTALL_HOOK(CHudSonicStageDelayProcessImp);
 	INSTALL_HOOK(CCountdownUpdate);
+	INSTALL_HOOK(ProcMsgChangeCustomHud);
 	INSTALL_HOOK(CHudSonicStageUpdateParallel);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
 
