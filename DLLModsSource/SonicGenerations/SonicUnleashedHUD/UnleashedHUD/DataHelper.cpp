@@ -549,34 +549,39 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	{
 		const bool multiple = *(size_t*)((char*)This + 572) > 0;
 		const bool single = *(bool*)((char*)This + 580);
+		const bool visible = multiple || single;
 
-		rcInfoCustom->SetHideFlag(!multiple && !single);
-		if (single)
+		rcInfoCustom->SetHideFlag(!visible);
+
+		if (visible)
 		{
-			rcInfoCustom->GetNode("num_nume")->SetText("1");
-			rcInfoCustom->GetNode("num_deno")->SetText("1");
-		}
+			if (single)
+			{
+				rcInfoCustom->GetNode("num_nume")->SetText("1");
+				rcInfoCustom->GetNode("num_deno")->SetText("1");
+			}
 
-		const auto position = isMission ? SetMissionScenePosition(rcInfoCustom.Get(), rowIndex++) : infoCustomPos;
+			const auto position = isMission ? SetMissionScenePosition(rcInfoCustom.Get(), rowIndex++) : infoCustomPos;
 
-		for (size_t i = 0; i < 2; i++)
-		{
-			const auto& rcScene = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1C8))[i];
-			if (!rcScene)
-				continue;
+			for (size_t i = 0; i < 2; i++)
+			{
+				const auto& rcScene = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x1C8))[i];
+				if (!rcScene)
+					continue;
 
-			constexpr float scale = 0.9f;
+				constexpr float scale = 0.9f;
 
-			if (const auto rcIconCustom = rcScene->GetNode("icon_custom_0"))
-				rcIconCustom->SetScale(scale, scale);
+				if (const auto rcIconCustom = rcScene->GetNode("icon_custom_0"))
+					rcIconCustom->SetScale(scale, scale);
 
-			if (const auto rcIconCustom = rcScene->GetNode("icon_chao_5"))
-				rcIconCustom->SetScale(scale, scale);
+				if (const auto rcIconCustom = rcScene->GetNode("icon_chao_5"))
+					rcIconCustom->SetScale(scale, scale);
 
-			rcScene->GetNode("position")->SetScale(0.8f, 0.8f);
-			rcScene->GetNode("bg")->SetHideFlag(true);
-			rcScene->GetNode("icon_btn")->SetHideFlag(true);
-			rcScene->SetPosition(position.x() + (rcCountdown ? 34.0f : -15.0f), position.y() - 103.0f);
+				rcScene->GetNode("position")->SetScale(0.8f, 0.8f);
+				rcScene->GetNode("bg")->SetHideFlag(true);
+				rcScene->GetNode("icon_btn")->SetHideFlag(true);
+				rcScene->SetPosition(position.x() + (rcCountdown ? 34.0f : -15.0f), position.y() - 103.0f);
+			}
 		}
 	}
 
