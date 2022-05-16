@@ -752,7 +752,7 @@ class CObjGetItem : public Sonic::CGameObject
 	hh::math::CVector m_Position;
 	hh::math::CVector4 m_ScreenPosition;
 	hh::math::CQuaternion m_Rotation;
-	float m_Factor;
+	float m_Factor{};
 	boost::shared_ptr<hh::mr::CSingleElement> m_spModel;
 
 public:
@@ -781,12 +781,12 @@ public:
 	{
 		const auto spCamera = m_pMember->m_pGameDocument->GetWorld()->GetCamera();
 
-		const auto ringDepth = spCamera->m_MyCamera.m_Projection * hh::math::CVector4(0, 0, -10.0f, 1.0f);
+		const hh::math::CVector4 ringDepth = spCamera->m_MyCamera.m_Projection * hh::math::CVector4(0, 0, -10.0f, 1.0f);
 
-		const auto viewPosInProj = spCamera->m_MyCamera.m_Projection.inverse() * 
+		const hh::math::CVector4 viewPosInProj = spCamera->m_MyCamera.m_Projection.inverse() *
 			((1.0f - m_Factor) * m_ScreenPosition + m_Factor * hh::math::CVector4(-0.7765625f, -0.7833333333333333f, ringDepth.z() / ringDepth.w(), 1.0f));
 
-		const auto viewPosition = viewPosInProj.head<3>() / viewPosInProj.w();
+		const hh::math::CVector viewPosition = viewPosInProj.head<3>() / viewPosInProj.w();
 		
 		m_spModel->m_spInstanceInfo->m_Transform = spCamera->m_MyCamera.m_View.inverse() * (Eigen::Translation3f(viewPosition) * m_Rotation);
 		m_Rotation = m_Rotation.slerp(updateInfo.DeltaTime * 6.0f, hh::math::CQuaternion::Identity());
