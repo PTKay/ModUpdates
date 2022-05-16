@@ -649,7 +649,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 			if (rcSpeedCount->m_MotionFrame < frames[0])
 			{
 				if (!spSpeed01)
-					spSpeed01 = playerContext->PlaySound(39, 0);
+					spSpeed01 = playerContext->PlaySound(1000016, 0);
 			}
 			else
 				spSpeed01 = nullptr;
@@ -665,7 +665,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 
 					auto& rHandle = i < 3 ? spSpeed02[i] : spSpeed03;
 					if (!rHandle)
-						rHandle = playerContext->PlaySound(i < 3 ? 40 : 41, 0);
+						rHandle = playerContext->PlaySound(i < 3 ? 1000017 : 1000018, 0);
 				}
 			}
 
