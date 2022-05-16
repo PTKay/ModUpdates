@@ -106,6 +106,9 @@ size_t actionCount;
 hh::math::CVector2 infoCustomPos;
 bool scoreEnabled;
 
+float xAspectOffset = 0.0f;
+float yAspectOffset = 0.0f;
+
 boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed01;
 boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed02[3];
 boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed03;
@@ -328,6 +331,7 @@ HOOK(void, __fastcall, ProcMsgNotifyLapTimeHud, 0x1097640, Sonic::CGameObject* T
 		return;
 
 	rcSpeedCount = rcPlayScreen->CreateScene("speed_count");
+	rcSpeedCount->SetPosition(xAspectOffset, 0);
 	rcSpeedCount->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
 
 	const auto playerContext = Sonic::Player::CPlayerSpeedContext::GetInstance();
@@ -380,6 +384,27 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	originalCHudSonicStageDelayProcessImp(This);
 	CHudSonicStageRemoveCallback(This, nullptr, nullptr);
 
+	if (*(size_t*)0x6F23C6 != 0x75D8C0D9) // Widescreen Support
+	{
+		const float aspect = (float)*(size_t*)0x1DFDDDC / (float)*(size_t*)0x1DFDDE0;
+
+		if (aspect * 9.0f > 16.0f)
+		{
+			xAspectOffset = 720.0f * aspect - 1280.0f;
+			yAspectOffset = 0.0f;
+		}
+		else
+		{
+			xAspectOffset = 0.0f;
+			yAspectOffset = 1280.0f / aspect - 720.0f;
+		}
+	}
+	else 
+	{
+		xAspectOffset = 0.0f;
+		yAspectOffset = 0.0f;
+	}
+
 	Sonic::CCsdDatabaseWrapper wrapper(This->m_pMember->m_pGameDocument->m_pMember->m_spDatabase.get());
 
 	auto spCsdProject = wrapper.GetCsdProject("ui_playscreen");
@@ -392,6 +417,7 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	rcPlayScreenEv = spCsdProject->m_rcProject;
 
 	rcPosition = rcMissionScreen->CreateScene("position");
+	rcPosition->SetPosition(0, 0);
 
 	isMission = !Common::IsCurrentStageBossBattle() && (Common::GetCurrentStageID() & (SMT_Mission1 | SMT_Mission2 | SMT_Mission3 | SMT_Mission4 | SMT_Mission5));
 
@@ -400,7 +426,10 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	float offset = 0.0f;
 
 	if (flags & 0x1 && *(uint8_t*)0x1098C82 != 0xEB) // Lives (accounts for Disable Lives patch)
+	{
 		rcPlayerCount = rcPlayScreen->CreateScene("player_count");
+		rcPlayerCount->SetPosition(0.0f, 0.0f);
+	}
 	else
 		offset = -50.0f;
 
@@ -446,6 +475,10 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		rcRingEnergyGauge = rcPlayScreen->CreateScene("so_ringenagy_gauge");
 		rcGaugeFrame = rcPlayScreen->CreateScene("gauge_frame");
 
+		rcSpeedGauge->SetPosition(0, yAspectOffset);
+		rcRingEnergyGauge->SetPosition(0, yAspectOffset);
+		rcGaugeFrame->SetPosition(0, yAspectOffset);
+
 		FreezeMotion(rcSpeedGauge.Get());
 		FreezeMotion(rcRingEnergyGauge.Get());
 		FreezeMotion(rcGaugeFrame.Get());
@@ -480,7 +513,10 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 			FreezeMotion(rcRingCount.Get(), false);
 		}
 		else
+		{
 			rcRingCount = rcPlayScreen->CreateScene("ring_count");
+			rcRingCount->SetPosition(0, yAspectOffset);
+		}
 	}
 
 	if (isMission)
@@ -797,7 +833,10 @@ public:
 		if (m_Factor > 1.0f)
 		{
 			SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
-			spPlayScreen->m_rcProject->CreateScene("ring_get")->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
+
+			const auto rcScene = spPlayScreen->m_rcProject->CreateScene("ring_get");
+			rcScene->SetPosition(0, yAspectOffset);
+			rcScene->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
 		}
 	}
 };
