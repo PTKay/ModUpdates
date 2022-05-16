@@ -596,12 +596,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 
 		// Modern
 		else
-		{
 			rcRingCount->GetNode("num_ring")->SetText(text);
-
-			if (prevRingCount < playerContext->m_RingCount)
-				spPlayScreen->m_rcProject->CreateScene("ring_get")->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
-		}
 	}
 
 	if (rcRingGet && playerContext && prevRingCount < playerContext->m_RingCount && rcRingGet->m_MotionDisableFlag)
@@ -752,6 +747,78 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		rcPinScore->SetHideFlag(true);
 }
 
+class CObjGetItem : public Sonic::CGameObject
+{
+	hh::math::CVector m_Position;
+	hh::math::CVector4 m_ScreenPosition;
+	hh::math::CQuaternion m_Rotation;
+	float m_Factor;
+	boost::shared_ptr<hh::mr::CSingleElement> m_spModel;
+
+public:
+	CObjGetItem(const hh::math::CVector& in_rPosition, const hh::math::CQuaternion& in_rRotation)
+		: m_Position(in_rPosition), m_Rotation(in_rRotation) {}
+
+	void AddCallback(const Hedgehog::Base::THolder<Sonic::CWorld>& worldHolder, Sonic::CGameDocument* pGameDocument,
+		const boost::shared_ptr<Hedgehog::Database::CDatabase>& spDatabase) override
+	{
+		Sonic::CApplicationDocument::GetInstance()->AddMessageActor("GameObject", this);
+		pGameDocument->AddUpdateUnit("f", this);
+
+		m_spModel = boost::make_shared<hh::mr::CSingleElement>(hh::mr::CMirageDatabaseWrapper(spDatabase.get()).GetModelData("cmn_obj_ring_HD"));
+		AddRenderable("HUD_B2", m_spModel, false);
+
+		const auto spCamera = pGameDocument->GetWorld()->GetCamera();
+		const auto viewPosition = spCamera->m_MyCamera.m_View * Eigen::Vector3f(m_Position);
+
+		m_ScreenPosition = spCamera->m_MyCamera.m_Projection * hh::math::CVector4(viewPosition.x(), viewPosition.y(), viewPosition.z(), 1.0f);
+		m_ScreenPosition /= m_ScreenPosition.w();
+
+		m_Rotation = spCamera->m_MyCamera.m_View.rotation() * m_Rotation;
+	}
+
+	void UpdateParallel(const Hedgehog::Universe::SUpdateInfo& updateInfo) override
+	{
+		const auto spCamera = m_pMember->m_pGameDocument->GetWorld()->GetCamera();
+
+		const auto ringDepth = spCamera->m_MyCamera.m_Projection * hh::math::CVector4(0, 0, -10.0f, 1.0f);
+
+		const auto viewPosInProj = spCamera->m_MyCamera.m_Projection.inverse() * 
+			((1.0f - m_Factor) * m_ScreenPosition + m_Factor * hh::math::CVector4(-0.7765625f, -0.7833333333333333f, ringDepth.z() / ringDepth.w(), 1.0f));
+
+		const auto viewPosition = viewPosInProj.head<3>() / viewPosInProj.w();
+		
+		m_spModel->m_spInstanceInfo->m_Transform = spCamera->m_MyCamera.m_View.inverse() * (Eigen::Translation3f(viewPosition) * m_Rotation);
+		m_Rotation = m_Rotation.slerp(updateInfo.DeltaTime * 6.0f, hh::math::CQuaternion::Identity());
+
+		m_Factor += updateInfo.DeltaTime * 0.125f;
+		m_Factor *= 1.2732395f;
+
+		if (m_Factor > 1.0f)
+		{
+			SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
+			spPlayScreen->m_rcProject->CreateScene("ring_get")->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
+		}
+	}
+};
+
+HOOK(void, __fastcall, CObjRingProcMsgHitEventCollision, 0x10534B0, Sonic::CGameObject3D* This, void* Edx, hh::fnd::Message& in_rMsg)
+{
+	if (rcSpeedGauge)
+	{
+		This->m_pMember->m_pGameDocument->AddGameObject(boost::make_shared<CObjGetItem>(
+			This->m_spMatrixNodeTransform->m_Transform.m_Position, This->m_spMatrixNodeTransform->m_Transform.m_Rotation));
+	}
+
+	originalCObjRingProcMsgHitEventCollision(This, Edx, in_rMsg);
+}
+
+// Make the homing reticle end immediately
+void __fastcall SetMotionFrameHomingReticle(Chao::CSD::CScene* This, void* Edx, float frame)
+{
+	This->SetMotionFrame(1000.0f);
+}
+
 void HookFunctions()
 {
 	INSTALL_HOOK(ProcMsgGetMissionLimitTime);
@@ -765,6 +832,8 @@ void HookFunctions()
 	WRITE_JUMP(0x109C1DC, GetScoreEnabled);
 	INSTALL_HOOK(ProcMsgSetPinballHud);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
+	INSTALL_HOOK(CObjRingProcMsgHitEventCollision);
+	WRITE_CALL(0xDEBCCF, SetMotionFrameHomingReticle);
 
 	WRITE_MEMORY(0x109B1A4, uint8_t, 0xE9, 0xDC, 0x02, 0x00, 0x00); // Disable lives (patched differently to not clash with Disable Lives patch)
 	WRITE_MEMORY(0x109B490, uint8_t, 0x90, 0xE9); // Disable time
