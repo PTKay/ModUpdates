@@ -290,6 +290,7 @@ void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, So
 	rcMissionScreen = nullptr;
 	rcPlayScreenEv = nullptr;
 	isMission = false;
+	actionCount = 1;
 }
 
 HOOK(void, __fastcall, ProcMsgGetMissionLimitTime, 0xD0F0E0, Sonic::CGameObject* This, void* Edx, hh::fnd::Message& in_rMsg)
