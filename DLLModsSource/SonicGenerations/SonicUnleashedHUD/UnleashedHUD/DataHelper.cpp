@@ -209,6 +209,24 @@ const Chao::CSD::RCPtr<Chao::CSD::CScene>& GetGpSonicSafeScene(void* This)
 	return *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)(*(char**)((char*)This + 0xAC) + 0x14);
 }
 
+void CreateRingGet()
+{
+	if (rcRingGet)
+		return;
+
+	rcRingGet = rcPlayScreenEv->CreateScene("ring_get");
+	if (rcCountdown)
+		rcRingGet->GetNode("ring_img")->SetScale(0.72f, 0.72f);
+
+	FreezeMotion(rcRingGet.Get());
+}
+
+void SetRingGetPosition(const hh::math::CVector2& position, float offset = 0.0f)
+{
+	if (rcRingGet)
+		rcRingGet->SetPosition(position.x() + offset - (rcCountdown ? 106 : 128), position.y() - (rcCountdown ? 199.5f : 200));
+}
+
 void __declspec(naked) GetScoreEnabled()
 {
 	static uint32_t returnAddress = 0x109C254;
@@ -338,8 +356,6 @@ HOOK(void, __fastcall, ProcMsgChangeCustomHud, 0x1096FF0, Sonic::CGameObject* Th
 	size_t* spriteIndex = (size_t*)((char*)&in_rMsg + 16);
 	size_t* spriteCount = (size_t*)((char*)&in_rMsg + 20);
 
-	printf("%d\n", *spriteIndex);
-
 	if (rcInfoCustom)
 	{
 		actionCount = *spriteCount > 0 ? max(actionCount, *spriteCount) : 0;
@@ -455,15 +471,12 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 			if (const auto rcTxtLarge = rcRingCount->GetNode("txt_l"))
 				rcTxtLarge->SetPatternIndex(1);
 
-			rcRingGet = rcPlayScreenEv->CreateScene("ring_get");
-			if (rcCountdown)
-				rcRingGet->GetNode("ring_img")->SetScale(0.72f, 0.72f);
+			CreateRingGet();
 
 			rcRingCount->SetPosition(0, offset + (rcScoreCount ? 50 : 0));
 			rcRingGet->SetPosition(0, offset + (rcScoreCount ? 50 : 0));
 
 			FreezeMotion(rcRingCount.Get(), false);
-			FreezeMotion(rcRingGet.Get());
 		}
 		else
 			rcRingCount = rcPlayScreen->CreateScene("ring_count");
@@ -562,9 +575,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	}
 
 	if (rcGaugeFrame)
-	{
 		rcGaugeFrame->SetMotionFrame(100.0f);
-	}
 
 	if (rcRingCount && playerContext)
 	{
@@ -579,20 +590,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 				rcScoreLarge->SetText(text);
 
 			if (isMission)
-			{
-				const auto position = SetMissionScenePosition(rcRingCount.Get(), rowIndex++);
-				rcRingGet->SetPosition(position.x() - (rcCountdown ? 106 : 128), position.y() - (rcCountdown ? 199.5f : 200));
-			}
-
-			if (prevRingCount < playerContext->m_RingCount && rcRingGet->m_MotionDisableFlag)
-			{
-				rcRingGet->SetMotion("get_Anim");
-				rcRingGet->SetMotionFrame(0.0f);
-				rcRingGet->m_MotionDisableFlag = false;
-				rcRingGet->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
-				rcRingGet->m_MotionSpeed = 1.0f;
-				rcRingGet->Update();
-			}
+				SetRingGetPosition(SetMissionScenePosition(rcRingCount.Get(), rowIndex++));
 		}
 
 		// Modern
@@ -603,9 +601,22 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 			if (prevRingCount < playerContext->m_RingCount)
 				spPlayScreen->m_rcProject->CreateScene("ring_get")->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
 		}
-
-		prevRingCount = playerContext->m_RingCount;
 	}
+
+	if (rcRingGet && playerContext && prevRingCount < playerContext->m_RingCount && rcRingGet->m_MotionDisableFlag)
+	{
+		rcRingGet->SetMotion("get_Anim");
+		rcRingGet->SetMotionFrame(0.0f);
+		rcRingGet->m_MotionDisableFlag = false;
+		rcRingGet->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcRingGet->m_MotionSpeed = 1.0f;
+		rcRingGet->Update();
+	}
+
+	if (playerContext)
+		prevRingCount = playerContext->m_RingCount;
+	else
+		prevRingCount = 0;
 
 	if (rcInfoCustom)
 	{
@@ -642,13 +653,45 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		rcItemCount->GetNode("num_nume")->SetText(text);
 		rcItemCount->SetMotionFrame(count >= itemCountDenominator ? rcItemCount->m_MotionEndFrame : 0.0f);
 
-		SetMissionScenePosition(rcItemCount.Get(), rowIndex++);
+		const auto position = SetMissionScenePosition(rcItemCount.Get(), rowIndex++);
+
+		// Mission ring count (shamelessly taken from Brian)
+		const bool missionRingCount = *(bool*)((uint32_t)This + 620);
+		
+		if (missionRingCount)
+		{
+			const size_t prevMissionRingCount = *(size_t*)((char*)This + 768);
+			if (prevMissionRingCount != playerContext->m_RingCount)
+			{
+				*(size_t*)((char*)This + 772) = prevMissionRingCount;
+				*(size_t*)((char*)This + 768) = playerContext->m_RingCount;
+				*(size_t*)((char*)This + 764) = 1;
+			}
+
+			// We don't need the actual ring count if it's shown here anyway
+			if (rcRingCount && !rcSpeedGauge)
+			{
+				if (isMission)
+					Chao::CSD::CProject::DestroyScene(rcMissionScreen.Get(), rcRingCount);
+				else
+					Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcRingCount);
+			}
+
+			CreateRingGet();
+			SetRingGetPosition(position, 32);
+		}
 
 		for (size_t i = 0; i < 2; i++)
 		{
 			const auto& rcMissionTarget = ((Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x130))[i];
 			if (!rcMissionTarget)
 				continue;
+
+			if (missionRingCount)
+			{
+				rcMissionTarget->SetHideFlag(true);
+				continue;
+			}
 
 			rcMissionTarget->GetNode("bg")->SetHideFlag(true);
 			rcMissionTarget->GetNode("SXY")->SetHideFlag(true);
