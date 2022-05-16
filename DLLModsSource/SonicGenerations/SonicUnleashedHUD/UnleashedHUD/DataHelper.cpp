@@ -355,8 +355,12 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 
 	size_t& flags = ((size_t*)This)[151];
 
-	if (flags & 0x1) // Lives
+	float offset = 0.0f;
+
+	if (flags & 0x1 && *(uint8_t*)0x1098C82 != 0xEB) // Lives (accounts for Disable Lives patch)
 		rcPlayerCount = rcPlayScreen->CreateScene("player_count");
+	else
+		offset = -50.0f;
 
 	if (flags & 0x2000) // Countdown
 	{
@@ -369,7 +373,10 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		if (isMission)
 			rcTimeCount = rcMissionScreen->CreateScene("time_count", "normal_so");
 		else
+		{
 			rcTimeCount = rcPlayScreen->CreateScene("time_count");
+			rcTimeCount->SetPosition(0, offset);
+		}
 	}
 
 	if (flags & 0x20000) // Mission Target
@@ -396,7 +403,10 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	}
 
 	if (ScoreGenerationsAPI::IsAttached() && !ScoreGenerationsAPI::IsStageForbidden()) // Score
+	{
 		rcScoreCount = rcPlayScreen->CreateScene("score_count");
+		rcScoreCount->SetPosition(0, offset);
+	}
 
 	if (flags & 0x400004 || Common::GetCurrentStageID() == SMT_bsd) // Rings
 	{
@@ -417,11 +427,8 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 			if (rcCountdown)
 				rcRingGet->GetNode("ring_img")->SetScale(0.72f, 0.72f);
 
-			if (rcScoreCount)
-			{
-				rcRingCount->SetPosition(0, 50);
-				rcRingGet->SetPosition(0, 50);
-			}
+			rcRingCount->SetPosition(0, offset + (rcScoreCount ? 50 : 0));
+			rcRingGet->SetPosition(0, offset + (rcScoreCount ? 50 : 0));
 
 			FreezeMotion(rcRingCount.Get(), false);
 			FreezeMotion(rcRingGet.Get());
@@ -443,13 +450,13 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	{
 		rcInfoCustom = rcPlayScreen->CreateScene("item_count", "conditional_meet_so");
 
-		float offset = rcScoreCount ? 50 : 0;
-		offset += !rcSpeedGauge && rcRingCount ? 50 : 0;
+		float infoCustomOffset = offset + (rcScoreCount ? 50 : 0);
+		infoCustomOffset += !rcSpeedGauge && rcRingCount ? 50 : 0;
 
 		infoCustomPos.x() = 128.0f;
-		infoCustomPos.y() = 200 + offset;
+		infoCustomPos.y() = 200 + infoCustomOffset;
 
-		rcInfoCustom->SetPosition(0, offset);
+		rcInfoCustom->SetPosition(0, infoCustomOffset);
 	}
 
 	FreezeMotion(rcInfoCustom.Get(), false);
@@ -683,7 +690,7 @@ void HookFunctions()
 	INSTALL_HOOK(CHudSonicStageUpdateParallel);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
 
-	WRITE_MEMORY(0x109B1A4, uint8_t, 0x90, 0xE9); // Disable lives
+	WRITE_MEMORY(0x109B1A4, uint8_t, 0xE9, 0xDC, 0x02, 0x00, 0x00); // Disable lives (patched differently to not clash with Disable Lives patch)
 	WRITE_MEMORY(0x109B490, uint8_t, 0x90, 0xE9); // Disable time
 	WRITE_MEMORY(0x109B5AD, uint8_t, 0x90, 0xE9); // Disable rings
 	WRITE_MEMORY(0x109B8F5, uint8_t, 0x90, 0xE9); // Disable boost gauge
