@@ -101,9 +101,6 @@
     <ClInclude Include="include\Helpers.h" />
     <ClInclude Include="include\INIReader.h" />
     <ClInclude Include="include\ModLoader.h" />
-    <ClInclude Include="include\ScoreGenerationsAPI.h" />
-    <ClInclude Include="include\Statistics.h" />
-    <ClInclude Include="include\Tables.h" />
     <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>

@@ -42,15 +42,6 @@
     <ClInclude Include="Pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\ScoreGenerationsAPI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\Statistics.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\Tables.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

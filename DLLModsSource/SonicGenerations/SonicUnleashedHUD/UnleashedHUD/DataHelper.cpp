@@ -5,7 +5,6 @@
 #include "include\Helpers.h"
 #include "Controllers\Controller.h"
 #include "include\Common.h"
-#include "include\ScoreGenerationsAPI.h"
 
 /**
 	The game's process. Used in ForceWriteData()
@@ -105,6 +104,7 @@ size_t itemCountDenominator;
 float speed;
 size_t actionCount;
 hh::math::CVector2 infoCustomPos;
+bool scoreEnabled;
 
 boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed01;
 boost::shared_ptr<Hedgehog::Sound::CSoundHandle> spSpeed02[3];
@@ -207,6 +207,30 @@ void HandleInfoCustom(const Chao::CSD::RCPtr<Chao::CSD::CScene>& rcScene)
 const Chao::CSD::RCPtr<Chao::CSD::CScene>& GetGpSonicSafeScene(void* This)
 {
 	return *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)(*(char**)((char*)This + 0xAC) + 0x14);
+}
+
+void __declspec(naked) GetScoreEnabled()
+{
+	static uint32_t returnAddress = 0x109C254;
+	__asm
+	{
+		mov	scoreEnabled, 1
+		jmp[returnAddress]
+	}
+}
+
+HOOK(void, __fastcall, ProcMsgSetPinballHud, 0x1095D40, Sonic::CGameObject* This, void* Edx, hh::fnd::Message& in_rMsg)
+{
+	// Update score
+	if ((*((char*)&in_rMsg + 16) & 1) && rcScoreCount)
+	{
+		char text[32];
+		sprintf(text, "%08d", *(size_t*)((char*)&in_rMsg + 20));
+		rcScoreCount->GetNode("score")->SetText(text);
+		rcScoreCount->Update();
+	}
+
+	originalProcMsgSetPinballHud(This, Edx, in_rMsg);
 }
 
 void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, Sonic::CGameDocument* pGameDocument)
@@ -314,6 +338,8 @@ HOOK(void, __fastcall, ProcMsgChangeCustomHud, 0x1096FF0, Sonic::CGameObject* Th
 	size_t* spriteIndex = (size_t*)((char*)&in_rMsg + 16);
 	size_t* spriteCount = (size_t*)((char*)&in_rMsg + 20);
 
+	printf("%d\n", *spriteIndex);
+
 	if (rcInfoCustom)
 	{
 		actionCount = *spriteCount > 0 ? max(actionCount, *spriteCount) : 0;
@@ -334,7 +360,6 @@ HOOK(void, __fastcall, ProcMsgChangeCustomHud, 0x1096FF0, Sonic::CGameObject* Th
 
 HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObject* This)
 {
-	ScoreGenerationsAPI::SetVisibility(false);
 	originalCHudSonicStageDelayProcessImp(This);
 	CHudSonicStageRemoveCallback(This, nullptr, nullptr);
 
@@ -368,15 +393,22 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		FreezeMotion(rcCountdown.Get());
 	}
 
-	if (flags & 0x2 && !rcCountdown) // Time
+	if (!rcCountdown)
 	{
-		if (isMission)
-			rcTimeCount = rcMissionScreen->CreateScene("time_count", "normal_so");
-		else
+		if (flags & 0x2) // Time
 		{
-			rcTimeCount = rcPlayScreen->CreateScene("time_count");
-			rcTimeCount->SetPosition(0, offset);
+			if (isMission)
+				rcTimeCount = rcMissionScreen->CreateScene("time_count", "normal_so");
+			else
+			{
+				rcTimeCount = rcPlayScreen->CreateScene("time_count");
+				rcTimeCount->SetPosition(0, offset);
+			}
 		}
+	}
+	else
+	{
+		offset += -50.0f;
 	}
 
 	if (flags & 0x20000) // Mission Target
@@ -402,13 +434,13 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		FreezeMotion(rcGaugeFrame.Get());
 	}
 
-	if (ScoreGenerationsAPI::IsAttached() && !ScoreGenerationsAPI::IsStageForbidden()) // Score
+	if (scoreEnabled) // Score
 	{
 		rcScoreCount = rcPlayScreen->CreateScene("score_count");
 		rcScoreCount->SetPosition(0, offset);
 	}
 
-	if (flags & 0x400004 || Common::GetCurrentStageID() == SMT_bsd) // Rings
+	if (flags & 0x400204 || Common::GetCurrentStageID() == SMT_bsd) // Rings
 	{
 		// Re-purpose score for Classic
 		if (!rcSpeedGauge)
@@ -532,12 +564,6 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	if (rcGaugeFrame)
 	{
 		rcGaugeFrame->SetMotionFrame(100.0f);
-	}
-
-	if (rcScoreCount)
-	{
-		sprintf(text, "%08d", ScoreGenerationsAPI::GetScore());
-		rcScoreCount->GetNode("score")->SetText(text);
 	}
 
 	if (rcRingCount && playerContext)
@@ -676,6 +702,10 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 			rcSpeedCount->GetNode("num_speed_pale")->SetText(pText);
 		}
 	}
+
+	// Hide pin_score
+	if (const auto rcPinScore = *(Chao::CSD::RCPtr<Chao::CSD::CScene>*)((char*)This + 0x128))
+		rcPinScore->SetHideFlag(true);
 }
 
 void HookFunctions()
@@ -688,6 +718,8 @@ void HookFunctions()
 	INSTALL_HOOK(CLastBossGaugeNewUpdate);
 	INSTALL_HOOK(ProcMsgChangeCustomHud);
 	INSTALL_HOOK(CHudSonicStageUpdateParallel);
+	WRITE_JUMP(0x109C1DC, GetScoreEnabled);
+	INSTALL_HOOK(ProcMsgSetPinballHud);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
 
 	WRITE_MEMORY(0x109B1A4, uint8_t, 0xE9, 0xDC, 0x02, 0x00, 0x00); // Disable lives (patched differently to not clash with Disable Lives patch)
@@ -698,9 +730,4 @@ void HookFunctions()
 	//WRITE_MEMORY(0x109BEF0, uint8_t, 0x90, 0xE9); // Disable mission countdown
 	WRITE_MEMORY(0x109C3E2, uint8_t, 0x90, 0xE9); // Disable mission rank
 	WRITE_MEMORY(0x109B6A7, uint8_t, 0x90, 0xE9); // Disable Time Eater rings
-}
-
-extern "C" __declspec(dllexport) void PostInit()
-{
-	ScoreGenerationsAPI::SetVisibility(false);
 }
