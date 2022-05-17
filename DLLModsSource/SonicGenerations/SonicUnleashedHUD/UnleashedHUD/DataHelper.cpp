@@ -852,12 +852,6 @@ HOOK(void, __fastcall, CObjRingProcMsgHitEventCollision, 0x10534B0, Sonic::CGame
 	originalCObjRingProcMsgHitEventCollision(This, Edx, in_rMsg);
 }
 
-// Make the homing reticle end immediately
-void __fastcall SetMotionFrameHomingReticle(Chao::CSD::CScene* This, void* Edx, float frame)
-{
-	This->SetMotionFrame(1000.0f);
-}
-
 void HookFunctions()
 {
 	INSTALL_HOOK(ProcMsgGetMissionLimitTime);
@@ -872,7 +866,7 @@ void HookFunctions()
 	INSTALL_HOOK(ProcMsgSetPinballHud);
 	WRITE_MEMORY(0x16A467C, void*, CHudSonicStageRemoveCallback);
 	INSTALL_HOOK(CObjRingProcMsgHitEventCollision);
-	WRITE_CALL(0xDEBCCF, SetMotionFrameHomingReticle);
+	WRITE_MEMORY(0xDEBCA4, uint8_t, 0xEB);
 
 	WRITE_MEMORY(0x109B1A4, uint8_t, 0xE9, 0xDC, 0x02, 0x00, 0x00); // Disable lives (patched differently to not clash with Disable Lives patch)
 	WRITE_MEMORY(0x109B490, uint8_t, 0x90, 0xE9); // Disable time
