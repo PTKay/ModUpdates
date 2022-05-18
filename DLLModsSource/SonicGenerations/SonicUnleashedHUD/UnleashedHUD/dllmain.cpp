@@ -1,24 +1,17 @@
-#include <fstream>
+HINSTANCE DllMain::handle;
 
-#include "DataHelper.h"
-#include "include\INIReader.h"
-#include "include\ModLoader.h"
-
-#define INI_FILE "UnleashedHUD.ini"
-
-int ReadIni()
+BOOL WINAPI DllMain(_In_ HINSTANCE hInstance, _In_ DWORD reason, _In_ LPVOID reserved)
 {
-	INIReader configReader(INI_FILE);
-	int buttons = configReader.GetInteger("HUD", "buttons", 0);
+	DllMain::handle = hInstance;
 
-	return buttons;
+	switch (reason)
+	{
+		case DLL_PROCESS_ATTACH:
+		case DLL_PROCESS_DETACH:
+		case DLL_THREAD_ATTACH:
+		case DLL_THREAD_DETACH:
+			break;
+	}
+
+	return TRUE;
 }
-
-extern "C" __declspec(dllexport) void Init(const char* path)
-{
-	int buttonType = ReadIni();
-	WriteData(buttonType);
-	HookFunctions();
-}
-
-__declspec(dllexport) ModInfo GensModInfo = { ModLoaderVer, GameVer };
