@@ -15,6 +15,7 @@
 #include <string>
 
 // Dependencies
+#include "ArchiveTreePatcher.h"
 #include "include\Common.h"
 #include "Configuration.h"
 #include "ControllerPatcher.h"

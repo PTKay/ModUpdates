@@ -1,3 +1,20 @@
+## Sonic Unleashed HUD v2.0
+- Ported original YNCP file from Sonic Unleashed (BIG thanks Skyth!) and added custom code related to CSD. This introduces the following
+    - Proper gameplay HUD with correct animations and colours
+    - Working speed meter
+    - Rings go to the ring counter when collected
+    - Working SPD marker when passing checkpoints
+- Added ability to set window title to Sonic Unleashed, including application icon (thanks Hyper!)
+
+This update marks a **huge** milestone for this mod, so I'd like to thank everyone that was involved behind the development of it. Big thanks to:
+- Skyth for pretty much being *the* developer in this version
+- brianuuu for writing a proper save system for Shuriken, allowing this to be possible in the first place
+- Crash5b for developing Shuriken
+- Sajid for developing SharpNeedle
+- Hyper for cleaning up the codebase and adding the fun changes to the game's title and icon
+- Ahremic for tweaking some Sonic Generations HUD elements to fit the original style of Sonic Unleashed
+- M&M for providing clear examples on how to patch the archive tree in order to simplify the button prompt system
+
 ## Sonic Unleashed HUD v1.8.2
 - Made speedometer longer (thanks Exe.Qution!)
 - Fixed an issue where the wrong button prompts were being used for skills

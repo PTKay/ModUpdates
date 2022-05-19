@@ -113,8 +113,8 @@ copy /Y "$(MSBuildProjectDirectory)\UnleashedHUD.json" "$(SolutionDir)$(Configur
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ArchiveTreePatcher.h" />
     <ClInclude Include="Configuration.h" />
-    <ClInclude Include="ControllerPatcher.h" />
     <ClInclude Include="detours\include\detours.h" />
     <ClInclude Include="detours\include\detver.h" />
     <ClInclude Include="detours\include\syelog.h" />
@@ -129,8 +129,8 @@ copy /Y "$(MSBuildProjectDirectory)\UnleashedHUD.json" "$(SolutionDir)$(Configur
     <ClInclude Include="Resources.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ArchiveTreePatcher.cpp" />
     <ClCompile Include="Configuration.cpp" />
-    <ClCompile Include="ControllerPatcher.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="HudSonicStage.cpp" />
     <ClCompile Include="Mod.cpp" />
