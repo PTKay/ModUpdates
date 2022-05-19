@@ -35,7 +35,7 @@ public:
 	/// </summary>
 	static WindowTitleRegion windowTitleRegion;
 
-	static enum class ButtonType : byte
+	static enum class ButtonType : int
 	{
 		X360,
 		XSX,
