@@ -12,6 +12,18 @@ public:
 	/// </summary>
 	static bool windowTitle;
 
+	static enum class WindowTitleIcon : int
+	{
+		X360,
+		X360_Preview,
+		PS3
+	};
+
+	/// <summary>
+	/// Determines what icon the Unleashed window title will use.
+	/// </summary>
+	static WindowTitleIcon windowTitleIcon;
+
 	static enum WindowTitleRegion
 	{
 		English,
@@ -23,7 +35,7 @@ public:
 	/// </summary>
 	static WindowTitleRegion windowTitleRegion;
 
-	static enum ButtonType
+	static enum class ButtonType : byte
 	{
 		X360,
 		XSX,

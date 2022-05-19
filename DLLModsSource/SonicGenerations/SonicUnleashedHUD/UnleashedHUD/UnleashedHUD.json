@@ -16,6 +16,17 @@
           "DefaultValue": true
         },
         {
+          "Name": "windowTitleIcon",
+          "Description": [
+            "Select the icon to use for the title bar."
+          ],
+          "DisplayName": "Window Title Icon",
+          "Type": "IconEnum",
+          "MinValue": null,
+          "MaxValue": null,
+          "DefaultValue": 0
+        },
+        {
           "Name": "windowTitleRegion",
           "Description": [
             "Select the region to use for the game title."
@@ -41,6 +52,29 @@
     }
   ],
   "Enums": {
+    "IconEnum": [
+      {
+        "DisplayName": "Xbox 360",
+        "Value": 0,
+        "Description": [
+          "Uses the Xbox 360 icon."
+        ]
+      },
+      {
+        "DisplayName": "Xbox 360 (Preview)",
+        "Value": 1,
+        "Description": [
+          "Uses the Xbox 360 icon from the preview build."
+        ]
+      },
+      {
+        "DisplayName": "PlayStation 3",
+        "Value": 2,
+        "Description": [
+          "Uses the PlayStation 3 icon."
+        ]
+      }
+    ],
     "RegionEnum": [
       {
         "DisplayName": "English",

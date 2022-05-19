@@ -3,7 +3,24 @@
 /// </summary>
 HICON __stdcall LoadSonicUnleashedIcon(HINSTANCE hInstance, LPCSTR lpIconName)
 {
-	return LoadIconA(DllMain::handle, (LPCSTR)IDI_ICON);
+	LPCSTR icon;
+
+	switch (Configuration::windowTitleIcon)
+	{
+		case Configuration::WindowTitleIcon::X360_Preview:
+			icon = (LPCSTR)ICON_X360_PREVIEW;
+			break;
+
+		case Configuration::WindowTitleIcon::PS3:
+			icon = (LPCSTR)ICON_PS3;
+			break;
+
+		default:
+			icon = (LPCSTR)ICON_X360;
+			break;
+	}
+
+	return LoadIconA(DllMain::handle, icon);
 }
 
 void Patches::Install()

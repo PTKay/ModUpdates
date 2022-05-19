@@ -52,7 +52,11 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_ICON                ICON                    "Icon.ico"
+ICON_X360               ICON                    "X360.ico"
+
+ICON_X360_PREVIEW       ICON                    "X360_Preview.ico"
+
+ICON_PS3                ICON                    "PS3.ico"
 
 #endif    // English (United Kingdom) resources
 /////////////////////////////////////////////////////////////////////////////

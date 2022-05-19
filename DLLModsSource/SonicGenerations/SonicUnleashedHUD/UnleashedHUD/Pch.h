@@ -18,7 +18,6 @@
 #include "ArchiveTreePatcher.h"
 #include "include\Common.h"
 #include "Configuration.h"
-#include "ControllerPatcher.h"
 #include "DllMain.h"
 #include "HudSonicStage.h"
 #include "include\Helpers.h"

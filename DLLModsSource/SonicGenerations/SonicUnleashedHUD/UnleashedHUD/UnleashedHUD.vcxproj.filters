@@ -93,7 +93,13 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Icon.ico">
+    <Image Include="PS3.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="X360.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="X360_Preview.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

@@ -150,7 +150,9 @@ copy /Y "$(MSBuildProjectDirectory)\UnleashedHUD.json" "$(SolutionDir)$(Configur
     <ResourceCompile Include="UnleashedHUD.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="Icon.ico" />
+    <Image Include="PS3.ico" />
+    <Image Include="X360.ico" />
+    <Image Include="X360_Preview.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
