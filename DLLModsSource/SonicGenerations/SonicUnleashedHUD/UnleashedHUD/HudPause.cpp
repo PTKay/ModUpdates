@@ -58,7 +58,8 @@ void HudPause_CreatePauseScreen(uint32_t* This)
     HudPause_CPauseRemoveCallback(gameObject, nullptr, nullptr);
 
     Sonic::CCsdDatabaseWrapper wrapper(gameObject->m_pMember->m_pGameDocument->m_pMember->m_spDatabase.get());
-    m_projectPause = wrapper.GetCsdProject("ui_pause_swa")->m_rcProject;
+    auto spCsdProject = wrapper.GetCsdProject("ui_pause_swa");
+    m_projectPause = spCsdProject->m_rcProject;
 
     m_scenePauseBG = m_projectPause->CreateScene("bg");
     m_scenePauseBG->SetHideFlag(true);
@@ -275,7 +276,8 @@ void HudPause_CreateWindowScreen(Sonic::CGameObject* gameObject)
     HudPause_CWindowImplRemoveCallback(gameObject, nullptr, nullptr);
 
     Sonic::CCsdDatabaseWrapper wrapper(gameObject->m_pMember->m_pGameDocument->m_pMember->m_spDatabase.get());
-    m_projectWindow = wrapper.GetCsdProject("ui_general_swa")->m_rcProject;
+    auto spCsdProject = wrapper.GetCsdProject("ui_general_swa");
+    m_projectWindow = spCsdProject->m_rcProject;
 
     m_sceneWindow = m_projectWindow->CreateScene("window");
     m_sceneWindow->SetHideFlag(true);
