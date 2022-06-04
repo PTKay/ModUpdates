@@ -532,6 +532,21 @@ public:
 			SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
 		}
 	}
+
+	bool ProcessMessage(Hedgehog::Universe::Message& message,bool flag) override
+	{
+		if (flag)
+		{
+			if (std::strstr(message.GetType(), "MsgRestartStage") != nullptr
+			 || std::strstr(message.GetType(), "MsgStageClear") != nullptr)
+			{
+				SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
+				return true;
+			}
+		}
+
+		return Sonic::CGameObject::ProcessMessage(message, flag);
+	}
 };
 
 HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObject* This, void* Edx, const hh::fnd::SUpdateInfo& in_rUpdateInfo)
@@ -832,6 +847,21 @@ public:
 			rcScene->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
 		}
 	}
+
+	bool ProcessMessage(Hedgehog::Universe::Message& message,bool flag) override
+	{
+		if (flag)
+		{
+			if (std::strstr(message.GetType(), "MsgRestartStage") != nullptr
+			 || std::strstr(message.GetType(), "MsgStageClear") != nullptr)
+			{
+				SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
+				return true;
+			}
+		}
+
+		return Sonic::CGameObject::ProcessMessage(message, flag);
+	}
 };
 
 class CObjGetLife : public Sonic::CGameObject
@@ -899,6 +929,21 @@ public:
 			SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
 		}
 	}
+
+	bool ProcessMessage(Hedgehog::Universe::Message& message,bool flag) override
+	{
+		if (flag)
+		{
+			if (std::strstr(message.GetType(), "MsgRestartStage") != nullptr
+			 || std::strstr(message.GetType(), "MsgStageClear") != nullptr)
+			{
+				SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
+				return true;
+			}
+		}
+
+		return Sonic::CGameObject::ProcessMessage(message, flag);
+	}
 };
 
 HOOK(void, __fastcall, CObjRingProcMsgHitEventCollision, 0x10534B0, Sonic::CGameObject3D* This, void* Edx, hh::fnd::Message& in_rMsg)
@@ -917,6 +962,8 @@ HOOK(int, __fastcall, ProcMsgRestartStage, 0xE76810, uint32_t* This, void* Edx, 
 {
 	if (rcSpeedCount)
 		Chao::CSD::CProject::DestroyScene(rcPlayScreen.Get(), rcSpeedCount);
+
+	lostRingCount = 0;
 
 	return originalProcMsgRestartStage(This, Edx, message);
 }
