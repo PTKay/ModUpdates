@@ -332,6 +332,14 @@ HOOK(int, __fastcall, HudPause_CWindowImplCStateShowBegin, 0x4392A0, hh::fnd::CS
         HudPause_StopMotion(m_sceneWindowSelect, "Scroll_Anim", 0.0f);
         HudPause_PlayMotion(m_sceneWindowSelect, "Usual_Anim", true);
     }
+
+    // Initial cursor pos
+    uint32_t cursorPos = ((uint32_t*)context)[96];
+    if (cursorPos > 0)
+    {
+        HudPause_StopMotion(m_sceneWindowSelect, "Scroll_Anim", cursorPos * 10.0f);
+    }
+
     return result;
 }
 
