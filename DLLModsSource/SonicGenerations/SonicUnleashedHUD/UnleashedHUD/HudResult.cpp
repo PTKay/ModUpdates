@@ -478,21 +478,24 @@ HOOK(void, __fastcall, HudResult_CHudResultAdvance, 0x10B96D0, Sonic::CGameObjec
 	}
 	case HudResult::ResultState::Footer:
 	{
-		static SharedPtrTypeless soundHandle;
-		Sonic::SPadState const* padState = &Sonic::CInputState::GetInstance()->GetPadState();
-		if (padState->IsTapped(Sonic::EKeyState::eKeyState_A))
+		if (*(uint32_t*)0x10B96E6 == 0xFFD285E8)
 		{
-			WRITE_JUMP(0x10B96E6, (void*)0x10B974B);
-			WRITE_NOP(0x10B9976, 5);
-			Common::PlaySoundStatic(soundHandle, 1000005);
+			static SharedPtrTypeless soundHandle;
+			Sonic::SPadState const* padState = &Sonic::CInputState::GetInstance()->GetPadState();
+			if (padState->IsTapped(Sonic::EKeyState::eKeyState_A))
+			{
+				WRITE_JUMP(0x10B96E6, (void*)0x10B974B);
+				WRITE_NOP(0x10B9976, 5);
+				Common::PlaySoundStatic(soundHandle, 1000005);
 
-			HudLoading::StartFadeOut();
-		}
-		else if (!IsFirstTimePlayStage() && padState->IsTapped(Sonic::EKeyState::eKeyState_Y))
-		{
-			WRITE_JUMP(0x10B96E6, (void*)0x10B999F);
-			WRITE_NOP(0x10B9A7C, 5);
-			Common::PlaySoundStatic(soundHandle, 1000005);
+				HudLoading::StartFadeOut();
+			}
+			else if (!IsFirstTimePlayStage() && padState->IsTapped(Sonic::EKeyState::eKeyState_Y))
+			{
+				WRITE_JUMP(0x10B96E6, (void*)0x10B999F);
+				WRITE_NOP(0x10B9A7C, 5);
+				Common::PlaySoundStatic(soundHandle, 1000005);
+			}
 		}
 
 		break;
