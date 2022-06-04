@@ -33,4 +33,10 @@ extern "C" __declspec(dllexport) void PostInit()
 		MessageBox(nullptr, TEXT("'E-Rank Generations' mod is not compatible with 'Sonic Unleashed HUD'! Please disable it."), TEXT("Sonic Unleashed HUD"), MB_ICONERROR);
 		exit(-1);
 	}
+
+	if (Configuration::unleashedResultMusic && GetModuleHandle(TEXT("CustomizableResultsMusic.dll")))
+	{
+		MessageBox(nullptr, TEXT("'Customizable Results Music' mod is not compatible with 'Sonic Unleashed HUD' when Unleashed Music is enabled! Either disable Unleashed Music in configuration or the mod"), TEXT("Sonic Unleashed HUD"), MB_ICONERROR);
+		exit(-1);
+	}
 }
