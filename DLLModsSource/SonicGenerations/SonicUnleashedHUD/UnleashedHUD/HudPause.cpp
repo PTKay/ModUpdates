@@ -93,7 +93,7 @@ void HudPause_OpenPauseScreen(bool isPam)
     HudPause_PlayMotion(m_scenePauseBG, "Intro_Anim");
     HudPause_PlayMotion(m_scenePauseHeader, "Intro_Anim");
 
-    m_scenePauseSelect->SetPosition(0.0f, isPam ? -23.0f : -74.0f);
+    m_scenePauseSelect->SetPosition(HudSonicStage::xAspectOffset / 2, HudSonicStage::yAspectOffset / 2 + (isPam ? -23.0f : -74.0f));
     m_scenePauseSelect->GetNode("img")->SetScale(38.0f, 1.0f);
     HudPause_PlayMotion(m_scenePauseSelect, "Usual_Anim", true);
     HudPause_StopMotion(m_scenePauseSelect, "Scroll_Anim", 0.0f);
@@ -328,7 +328,7 @@ HOOK(int, __fastcall, HudPause_CWindowImplCStateShowBegin, 0x4392A0, hh::fnd::CS
     }
     else
     {
-        m_sceneWindowSelect->SetPosition(0.0f, yPos);
+        m_sceneWindowSelect->SetPosition(HudSonicStage::xAspectOffset / 2, HudSonicStage::yAspectOffset / 2 + yPos);
         HudPause_StopMotion(m_sceneWindowSelect, "Scroll_Anim", 0.0f);
         HudPause_PlayMotion(m_sceneWindowSelect, "Usual_Anim", true);
     }
