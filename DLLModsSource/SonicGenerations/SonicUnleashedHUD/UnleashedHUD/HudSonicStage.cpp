@@ -391,6 +391,13 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 		FreezeMotion(rcSpeedGauge.Get());
 		FreezeMotion(rcRingEnergyGauge.Get());
 		FreezeMotion(rcGaugeFrame.Get());
+
+		// Disable ring drop
+		WRITE_JUMP(0xE66005, (void*)0xE66210);
+	}
+	else
+	{
+		WRITE_MEMORY(0xE66005, uint8_t, 0x80, 0xBF, 0x72, 0x01, 0x00);
 	}
 
 	if (HudSonicStage::scoreEnabled) // Score
@@ -928,16 +935,6 @@ HOOK(void, __stdcall, CPlayerGetLife, 0xE75520, Sonic::Player::CPlayerContext* c
 	}
 }
 
-HOOK(int, __fastcall, CDroppedRingImplCreateRing, 0x1054FF0, void* This, void* Edx, int a2, int a3, int a4)
-{
-	if (*pClassicSonicContext || !rcRingEnergyGauge)
-	{
-		return originalCDroppedRingImplCreateRing(This, Edx, a2, a3, a4);
-	}
-
-	return 0;
-}
-
 HOOK(void, __fastcall, ProcMsgDamageModern, 0xE27890, uint32_t* This, void* Edx, void* message)
 {
 	auto const* context = Sonic::Player::CPlayerSpeedContext::GetInstance();
@@ -1012,7 +1009,6 @@ void HudSonicStage::Install()
 	WRITE_STRING(0x15E90DC, "");
 
 	// Unleashed Drop Ring HUD
-	INSTALL_HOOK(CDroppedRingImplCreateRing);
 	INSTALL_HOOK(ProcMsgDamageModern);
 
 }
