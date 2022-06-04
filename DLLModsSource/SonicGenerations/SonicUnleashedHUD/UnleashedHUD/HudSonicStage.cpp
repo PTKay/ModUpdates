@@ -762,7 +762,7 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		rcPinScore->SetHideFlag(true);
 
 	// Handle lost rings
-	if (lostRingCount > 0)
+	if (lostRingCount > 0 && rcRingEnergyGauge)
 	{
 		lostRingCount--;
 		This->m_pMember->m_pGameDocument->AddGameObject(boost::make_shared<CObjDropRing>());
@@ -930,7 +930,7 @@ HOOK(void, __stdcall, CPlayerGetLife, 0xE75520, Sonic::Player::CPlayerContext* c
 
 HOOK(int, __fastcall, CDroppedRingImplCreateRing, 0x1054FF0, void* This, void* Edx, int a2, int a3, int a4)
 {
-	if (*pClassicSonicContext)
+	if (*pClassicSonicContext || !rcRingEnergyGauge)
 	{
 		return originalCDroppedRingImplCreateRing(This, Edx, a2, a3, a4);
 	}
