@@ -971,7 +971,8 @@ void HudSonicStage::Install()
 
 	WRITE_JUMP(0x109C1DC, GetScoreEnabled);
 
-	WRITE_STATIC_MEMORY(0x155E5D8, "ui_lockon_cursar", 16); // Used to keep the original Generations lock on cursor in the Time Eater boss battle.
+	WRITE_MEMORY(0xB6AC1C, char*, "ui_lockon_cursor_gen"); // boss lock-on
+	WRITE_MEMORY(0xDEC0CF, char*, "ui_lockon_cursor_swa"); // normal homing attack hud
 	
 	// Unleashed Ready GO!
 	WRITE_MEMORY(0x109DAC8, char*, "Start_SWA");

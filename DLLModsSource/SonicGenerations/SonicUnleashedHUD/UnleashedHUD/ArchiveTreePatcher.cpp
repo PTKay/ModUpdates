@@ -77,5 +77,6 @@ void ArchiveTreePatcher::Install()
     }
 
 	archiveDependencies.push_back(ArchiveDependency("SonicRankE", {}));
+	archiveDependencies.push_back(ArchiveDependency("SonicActionCommonSWA", { "SonicActionCommon" }));
     INSTALL_HOOK(ParseArchiveTree);
 }
