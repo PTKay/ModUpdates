@@ -21,6 +21,17 @@ Chao::CSD::RCPtr<Chao::CSD::CProject> rcPlayScreenEv;
 Chao::CSD::RCPtr<Chao::CSD::CScene> rcRingGet;
 boost::shared_ptr<Sonic::CGameObjectCSD> spPlayScreenEv;
 
+Chao::CSD::RCPtr<Chao::CSD::CProject> rcBossScreen;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcBossGaugeBG;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcBossGauge1;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcBossGauge2;
+Chao::CSD::RCPtr<Chao::CSD::CScene> rcBossGaugeBreakPoint;
+boost::shared_ptr<Sonic::CGameObjectCSD> spBossScreen;
+float bossGauge1Frame;
+float bossGauge2Frame;
+float boosGauge2Timer;
+float bossGaugeBreakPointFrame;
+
 size_t prevRingCount;
 bool isMission;
 size_t itemCountDenominator;
@@ -47,6 +58,9 @@ void CreateScreen(Sonic::CGameObject* pParentGameObject)
 
 	if (rcPlayScreenEv && !spPlayScreenEv)
 		pParentGameObject->m_pMember->m_pGameDocument->AddGameObject(spPlayScreenEv = boost::make_shared<Sonic::CGameObjectCSD>(rcPlayScreenEv, 0.5f, "HUD_B1", false), "main", pParentGameObject);
+	
+	if (rcBossScreen && !spBossScreen)
+		pParentGameObject->m_pMember->m_pGameDocument->AddGameObject(spBossScreen = boost::make_shared<Sonic::CGameObjectCSD>(rcBossScreen, 0.5f, "HUD_B1", false), "main", pParentGameObject);
 }
 
 void KillScreen()
@@ -67,6 +81,12 @@ void KillScreen()
 	{
 		spPlayScreenEv->SendMessage(spPlayScreenEv->m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
 		spPlayScreenEv = nullptr;
+	}
+
+	if (spBossScreen)
+	{
+		spBossScreen->SendMessage(spBossScreen->m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
+		spBossScreen = nullptr;
 	}
 }
 
@@ -213,9 +233,15 @@ void __fastcall CHudSonicStageRemoveCallback(Sonic::CGameObject* This, void*, So
 
 	Chao::CSD::CProject::DestroyScene(rcPlayScreenEv.Get(), rcRingGet);
 
+	Chao::CSD::CProject::DestroyScene(rcBossScreen.Get(), rcBossGaugeBG);
+	Chao::CSD::CProject::DestroyScene(rcBossScreen.Get(), rcBossGauge1);
+	Chao::CSD::CProject::DestroyScene(rcBossScreen.Get(), rcBossGauge2);
+	Chao::CSD::CProject::DestroyScene(rcBossScreen.Get(), rcBossGaugeBreakPoint);
+
 	rcPlayScreen = nullptr;
 	rcMissionScreen = nullptr;
 	rcPlayScreenEv = nullptr;
+	rcBossScreen = nullptr;
 	isMission = false;
 	actionCount = 1;
 }
@@ -324,6 +350,9 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 
 	spCsdProject = wrapper.GetCsdProject("ui_playscreen_ev");
 	rcPlayScreenEv = spCsdProject->m_rcProject;
+
+	spCsdProject = wrapper.GetCsdProject("ui_boss_gauge");
+	rcBossScreen = spCsdProject->m_rcProject;
 
 	rcPosition = rcMissionScreen->CreateScene("position");
 	rcPosition->SetPosition(0, 0);
@@ -464,6 +493,26 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	}
 
 	FreezeMotion(rcInfoCustom.Get(), false);
+
+	if (Common::IsCurrentStageBossBattle() && (Common::GetCurrentStageID() & 0xFF) != SMT_bsd)
+	{
+		rcBossGaugeBG = rcBossScreen->CreateScene("gauge_bg");
+		rcBossGaugeBG->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGauge1 = rcBossScreen->CreateScene("gauge_1");
+		rcBossGauge1->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGauge2 = rcBossScreen->CreateScene("gauge_2");
+		rcBossGauge2->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+
+		rcBossGaugeBreakPoint = rcBossScreen->CreateScene("gauge_breakpoint");
+		rcBossGaugeBreakPoint->SetMotion("position");
+		rcBossGaugeBreakPoint->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGaugeBreakPoint->SetHideFlag(true);
+
+		bossGauge1Frame = 100.0f;
+		bossGauge2Frame = 100.0f;
+		boosGauge2Timer = 0.0f;
+		bossGaugeBreakPointFrame = 0.0f;
+	}
 
 	flags &= ~(0x1 | 0x2 | 0x400004 | 0x200 | 0x800 | 0x1000000); // Mask to prevent crash when game tries accessing the elements we disabled later on
 
@@ -789,6 +838,44 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		lostRingCount--;
 		This->m_pMember->m_pGameDocument->AddGameObject(boost::make_shared<CObjDropRing>());
 	}
+
+	// Handle boss health
+	if (rcBossGauge1 && rcBossGauge1->m_MotionDisableFlag)
+	{
+		rcBossGauge1->SetMotion("Size_Anim");
+		rcBossGauge1->SetMotionFrame(bossGauge1Frame);
+		rcBossGauge1->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGauge1->m_MotionSpeed = 0.0f;
+		rcBossGauge1->Update();
+		
+		if (bossGaugeBreakPointFrame > 0.0f)
+		{
+			rcBossGaugeBreakPoint->SetHideFlag(false);
+			rcBossGaugeBreakPoint->SetMotion("position");
+			rcBossGaugeBreakPoint->SetMotionFrame(bossGaugeBreakPointFrame);
+			rcBossGaugeBreakPoint->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+			rcBossGaugeBreakPoint->m_MotionSpeed = 0.0f;
+			rcBossGaugeBreakPoint->Update();
+		}
+
+		if (bossGauge1Frame != bossGauge2Frame)
+		{
+			boosGauge2Timer += in_rUpdateInfo.DeltaTime;
+			if (boosGauge2Timer > 0.5f)
+			{
+				bossGauge2Frame = max(bossGauge1Frame, bossGauge2Frame - in_rUpdateInfo.DeltaTime * 30.0f);
+				rcBossGauge2->SetMotion("Size_Anim");
+				rcBossGauge2->SetMotionFrame(bossGauge2Frame);
+				rcBossGauge2->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+				rcBossGauge2->m_MotionSpeed = 0.0f;
+				rcBossGauge2->Update();
+			}
+		}
+		else
+		{
+			boosGauge2Timer = 0.0f;
+		}
+	}
 }
 
 class CObjGetItem : public Sonic::CGameObject
@@ -999,6 +1086,170 @@ HOOK(void, __fastcall, ProcMsgDamageModern, 0xE27890, uint32_t* This, void* Edx,
 	}
 }
 
+//---------------------------------------------------
+// Boss Health
+//---------------------------------------------------
+void HudSonicStage_BossSetHealth(float health, float maxHealth)
+{
+    bossGauge1Frame = health * 100.0f / maxHealth;
+	bossGauge1Frame = max(0.0f, min(100.0f, bossGauge1Frame));
+}
+
+void HudSonicStage_BossSetBreakPoint(float health, float maxHealth)
+{
+	bossGaugeBreakPointFrame = health * 100.0f / maxHealth;
+	bossGaugeBreakPointFrame = max(0.0f, min(100.0f, bossGaugeBreakPointFrame));
+}
+
+void __declspec(naked) HudSonicStage_CRivalMetalSonicLastHit()
+{
+    static uint32_t returnAddress = 0xCC8B73;
+    __asm
+    {
+        add     eax, 0FFFFFFFFh
+        mov     [edi + 200h], eax
+        fldz
+        sub     esp, 8
+        jmp     [returnAddress]
+    }
+}
+
+int HudSonicStage_MetalSonicMaxHealth = 0;
+HOOK(bool, __fastcall, HudSonicStage_CRivalMetalSonicProcessMessage, 0xCD2760, hh::fnd::CMessageActor* This, void* Edx, hh::fnd::Message& message, bool flag)
+{
+    bool result = originalHudSonicStage_CRivalMetalSonicProcessMessage(This, Edx, message, flag);
+
+    if (flag)
+    {
+        int health = ((int**)((uint32_t)This - 0x28))[104][128] + 2;
+
+        if (std::strstr(message.GetType(), "MsgDummy") != nullptr)
+        {
+            HudSonicStage_MetalSonicMaxHealth = health;
+            printf("[CustomHUD] Metal Sonic max health = %d\n", HudSonicStage_MetalSonicMaxHealth);
+        }
+
+        HudSonicStage_BossSetHealth(health, HudSonicStage_MetalSonicMaxHealth);
+		HudSonicStage_BossSetBreakPoint(1, HudSonicStage_MetalSonicMaxHealth);
+    }
+
+    return result;
+}
+
+int HudSonicStage_DeathEggMaxHealth = 0;
+HOOK(int, __fastcall, HudSonicStage_CBossDeathEggSetMaxHealth, 0xC46DA0, void* This, void* Edx, int a2, int a3)
+{
+    HudSonicStage_DeathEggMaxHealth = *(int*)(*(int*)(a3 + 4) + 4);
+    return originalHudSonicStage_CBossDeathEggSetMaxHealth(This, Edx, a2, a3);
+}
+
+HOOK(bool, __fastcall, HudSonicStage_CBossDeathEggProcessMessage, 0xC67350, hh::fnd::CMessageActor* This, void* Edx, hh::fnd::Message& message, bool flag)
+{
+    bool result = originalHudSonicStage_CBossDeathEggProcessMessage(This, Edx, message, flag);
+
+    if (flag)
+    {
+        int health = ((int*)((uint32_t)This - 0x28))[121];
+        HudSonicStage_BossSetHealth(health, HudSonicStage_DeathEggMaxHealth);
+		HudSonicStage_BossSetBreakPoint(2, HudSonicStage_DeathEggMaxHealth);
+    }
+
+    return result;
+}
+
+HOOK(bool, __fastcall, HudSonicStage_CBossPerfectChaosProcessMessage, 0xC122D0, hh::fnd::CMessageActor* This, void* Edx, hh::fnd::Message& message, bool flag)
+{
+    bool result = originalHudSonicStage_CBossPerfectChaosProcessMessage(This, Edx, message, flag);
+
+    if (flag)
+    {
+        int* pGameObject = (int*)((uint32_t)This - 0x28);
+        int health = pGameObject[121];
+        bool finalHitInstance = *(bool*)((int)pGameObject + 500);
+
+        // Only handles the first two hits
+        if (!finalHitInstance && health > 0)
+        {
+            HudSonicStage_BossSetHealth(health + 1, 4);
+			HudSonicStage_BossSetBreakPoint(1, 4);
+        }
+    }
+
+    return result;
+}
+
+HOOK(bool, __fastcall, HudSonicStage_CBossPerfectChaosCStateDamageToFinalAttack, 0x5D1B10, void* This)
+{
+    HudSonicStage_BossSetHealth(1, 4);
+    return originalHudSonicStage_CBossPerfectChaosCStateDamageToFinalAttack(This);
+}
+
+HOOK(void, __fastcall, HudSonicStage_CBossPerfectChaosCStateDefeated, 0x5D1C70, void* This)
+{
+    HudSonicStage_BossSetHealth(0, 4);
+    originalHudSonicStage_CBossPerfectChaosCStateDefeated(This);
+}
+
+HOOK(bool, __fastcall, HudSonicStage_CBossEggDragoonProcessMessage, 0xC3F500, hh::fnd::CMessageActor* This, void* Edx, hh::fnd::Message& message, bool flag)
+{
+    bool result = originalHudSonicStage_CBossEggDragoonProcessMessage(This, Edx, message, flag);
+
+    if (flag)
+    {
+        int* pGameObject = (int*)((uint32_t)This - 0x28);
+        int maxHealth = pGameObject[121];
+        int headHealth = pGameObject[124];
+        int bellyHealth = pGameObject[125];
+        HudSonicStage_BossSetHealth(headHealth + bellyHealth, maxHealth);
+    }
+
+    return result;
+}
+
+int HudSonicStage_SilverMaxHealth = 0;
+HOOK(bool, __fastcall, HudSonicStage_CRivalSilverProcessMessage, 0xC8B8F0, hh::fnd::CMessageActor* This, void* Edx, hh::fnd::Message& message, bool flag)
+{
+    bool result = originalHudSonicStage_CRivalSilverProcessMessage(This, Edx, message, flag);
+
+    if (flag)
+    {
+        int health = ((int**)((uint32_t)This - 0x28))[104][104] + 2;
+
+        if (std::strstr(message.GetType(), "MsgDummy") != nullptr)
+        {
+            HudSonicStage_SilverMaxHealth = health;
+            printf("[CustomHUD] Silver max health = %d\n", HudSonicStage_SilverMaxHealth);
+        }
+
+        HudSonicStage_BossSetHealth(health, HudSonicStage_SilverMaxHealth);
+		HudSonicStage_BossSetBreakPoint(1, HudSonicStage_SilverMaxHealth);
+    }
+
+    return result;
+}
+
+int HudSonicStage_TimeEaterMaxHealth = 0;
+HOOK(bool, __fastcall, HudSonicStage_CBossTimeEaterProcessMessage, 0xBFF390, hh::fnd::CMessageActor* This, void* Edx, hh::fnd::Message& message, bool flag)
+{
+    bool result = originalHudSonicStage_CBossTimeEaterProcessMessage(This, Edx, message, flag);
+
+    if (flag)
+    {
+        int health = ((int*)((uint32_t)This - 0x28))[121] + 1;
+
+        if (std::strstr(message.GetType(), "MsgDummy") != nullptr)
+        {
+            HudSonicStage_TimeEaterMaxHealth = health;
+            printf("[CustomHUD] Time Eater max health = %d\n", HudSonicStage_TimeEaterMaxHealth);
+        }
+
+        HudSonicStage_BossSetHealth(health, HudSonicStage_TimeEaterMaxHealth);
+		HudSonicStage_BossSetBreakPoint(1, HudSonicStage_TimeEaterMaxHealth);
+    }
+
+    return result;
+}
+
 void HudSonicStage::Install()
 {
 	INSTALL_HOOK(ProcMsgGetMissionLimitTime);
@@ -1057,6 +1308,18 @@ void HudSonicStage::Install()
 
 	// Unleashed Drop Ring HUD
 	INSTALL_HOOK(ProcMsgDamageModern);
+
+	// Boss Health
+	WRITE_JUMP(0xCC8B6E, HudSonicStage_CRivalMetalSonicLastHit);
+	INSTALL_HOOK(HudSonicStage_CRivalMetalSonicProcessMessage);
+	INSTALL_HOOK(HudSonicStage_CBossDeathEggSetMaxHealth);
+	INSTALL_HOOK(HudSonicStage_CBossDeathEggProcessMessage);
+	INSTALL_HOOK(HudSonicStage_CBossPerfectChaosProcessMessage);
+	INSTALL_HOOK(HudSonicStage_CBossPerfectChaosCStateDamageToFinalAttack);
+	INSTALL_HOOK(HudSonicStage_CBossPerfectChaosCStateDefeated);
+	INSTALL_HOOK(HudSonicStage_CBossEggDragoonProcessMessage);
+	INSTALL_HOOK(HudSonicStage_CRivalSilverProcessMessage);
+	INSTALL_HOOK(HudSonicStage_CBossTimeEaterProcessMessage);
 
 }
 
