@@ -498,14 +498,20 @@ HOOK(void, __fastcall, CHudSonicStageDelayProcessImp, 0x109A8D0, Sonic::CGameObj
 	{
 		rcBossGaugeBG = rcBossScreen->CreateScene("gauge_bg");
 		rcBossGaugeBG->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGaugeBG->SetPosition(HudSonicStage::xAspectOffset, 0);
+
 		rcBossGauge1 = rcBossScreen->CreateScene("gauge_1");
 		rcBossGauge1->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGauge1->SetPosition(HudSonicStage::xAspectOffset, 0);
+
 		rcBossGauge2 = rcBossScreen->CreateScene("gauge_2");
 		rcBossGauge2->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGauge2->SetPosition(HudSonicStage::xAspectOffset, 0);
 
 		rcBossGaugeBreakPoint = rcBossScreen->CreateScene("gauge_breakpoint");
 		rcBossGaugeBreakPoint->SetMotion("position");
 		rcBossGaugeBreakPoint->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayOnce;
+		rcBossGaugeBreakPoint->SetPosition(HudSonicStage::xAspectOffset, 0);
 		rcBossGaugeBreakPoint->SetHideFlag(true);
 
 		bossGauge1Frame = 100.0f;
