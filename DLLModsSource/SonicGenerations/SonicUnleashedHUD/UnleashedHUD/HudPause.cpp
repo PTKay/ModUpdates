@@ -57,6 +57,8 @@ void HudPause_CreatePauseScreen(uint32_t* This)
     Sonic::CGameObject* gameObject = (Sonic::CGameObject*)This[1];
     HudPause_CPauseRemoveCallback(gameObject, nullptr, nullptr);
 
+    HudSonicStage::CalculateAspectOffsets();
+
     Sonic::CCsdDatabaseWrapper wrapper(gameObject->m_pMember->m_pGameDocument->m_pMember->m_spDatabase.get());
     auto spCsdProject = wrapper.GetCsdProject("ui_pause_swa");
     m_projectPause = spCsdProject->m_rcProject;
@@ -274,6 +276,8 @@ void __fastcall HudPause_CWindowImplRemoveCallback(Sonic::CGameObject* This, voi
 void HudPause_CreateWindowScreen(Sonic::CGameObject* gameObject)
 {
     HudPause_CWindowImplRemoveCallback(gameObject, nullptr, nullptr);
+
+    HudSonicStage::CalculateAspectOffsets();
 
     Sonic::CCsdDatabaseWrapper wrapper(gameObject->m_pMember->m_pGameDocument->m_pMember->m_spDatabase.get());
     auto spCsdProject = wrapper.GetCsdProject("ui_general_swa");
