@@ -667,6 +667,11 @@ HOOK(void*, __fastcall, HudLoading_SetConverseCommonInfo, 0x6AFBA0, void* This, 
 		// Force mission text to be white
 		info[3] = 0xE2FFFFFF;
 	}
+	else if (info[3] == 0xFF000000)
+	{
+		// Force black text to be white
+		//info[3] = 0xFFFFFFFF;
+	}
 	return originalHudLoading_SetConverseCommonInfo(This, Edx, info);
 }
 
