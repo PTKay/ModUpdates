@@ -48,25 +48,25 @@ HOOK(bool, __stdcall, ParseArchiveTree, 0xD4C8E0, void* a1, char* pData, const s
 
 void ArchiveTreePatcher::Install()
 {
-	std::vector<std::string> dependencies = { "SonicActionCommon", "SonicActionCommonHud", "SystemCommon", "cmn200", "Guide", "pam_cmn", "StageGate", "Title", "NoticeBoard", "pam000" };
+	//std::vector<std::string> dependencies = { "SonicActionCommon", "SonicActionCommonHud", "SystemCommon", "cmn200", "Guide", "pam_cmn", "StageGate", "Title", "NoticeBoard", "pam000" };
     switch (Configuration::buttonType) 
     {
 		case Configuration::ButtonType::XSX:
-			archiveDependencies.push_back(ArchiveDependency("XboxSeriesButtons", dependencies));
+			archiveDependencies.push_back(ArchiveDependency("XboxSeriesButtons", { "SystemCommon" }));
 			WRITE_STRING(0x1688344, "ui_howxb");
 			WRITE_STRING(0x16886A8, "ui_howxb");
 			WRITE_STRING(0x1692BC4, "ui_howxb");
 			break;
 
 		case Configuration::ButtonType::PS3:
-			archiveDependencies.push_back(ArchiveDependency("PlaystationButtons", dependencies));
+			archiveDependencies.push_back(ArchiveDependency("PlaystationButtons", { "SystemCommon" }));
 			WRITE_STRING(0x1688344, "ui_howps");
 			WRITE_STRING(0x16886A8, "ui_howps");
 			WRITE_STRING(0x1692BC4, "ui_howps");
 			break;
 
 		case Configuration::ButtonType::Switch:
-			archiveDependencies.push_back(ArchiveDependency("SwitchProButtons", dependencies));
+			archiveDependencies.push_back(ArchiveDependency("SwitchProButtons", { "SystemCommon" }));
 			WRITE_STRING(0x1688344, "ui_howns");
 			WRITE_STRING(0x16886A8, "ui_howns");
 			WRITE_STRING(0x1692BC4, "ui_howns");
