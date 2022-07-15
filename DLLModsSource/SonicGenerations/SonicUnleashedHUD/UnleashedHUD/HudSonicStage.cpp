@@ -664,6 +664,9 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 		sprintf(text, "%02d", minutes);
 		rcTimeCount->GetNode("time100")->SetText(text);
 
+		if (rcPlayerCount)
+			rowIndex++;
+
 		if (isMission)
 			SetMissionScenePosition(rcTimeCount.Get(), rowIndex++);
 	}
