@@ -909,16 +909,19 @@ HOOK(void, __fastcall, CHudSonicStageUpdateParallel, 0x1098A50, Sonic::CGameObje
 	}
 }
 
-class CObjGetItem : public Sonic::CGameObject
+// GET RING EFFECT
+class CObjGetRing : public Sonic::CGameObject
 {
 	hh::math::CMatrix44 m_Transform;
 	hh::math::CQuaternion m_Rotation;
 	hh::math::CQuaternion m_TargetRotation;
+	bool m_activeRandomRotate;
 	float m_Factor{};
+	float m_Angle;
 	boost::shared_ptr<hh::mr::CSingleElement> m_spModel;
 
 public:
-	CObjGetItem(const hh::math::CMatrix& in_rTransform) : m_Rotation(hh::math::CQuaternion::Identity())
+	CObjGetRing(const hh::math::CMatrix& in_rTransform) : m_Rotation(hh::math::CQuaternion::Identity())
 	{
 		const auto spCamera = Sonic::CGameDocument::GetInstance()->GetWorld()->GetCamera();
 		const hh::math::CMatrix viewTransform = spCamera->m_MyCamera.m_View * in_rTransform;
@@ -935,6 +938,15 @@ public:
 
 		m_spModel = boost::make_shared<hh::mr::CSingleElement>(hh::mr::CMirageDatabaseWrapper(spDatabase.get()).GetModelData("cmn_obj_ring_HD"));
 		AddRenderable("Sparkle_FB", m_spModel, false);
+
+		std::random_device dev;
+		std::mt19937 rng(dev());
+		std::uniform_int_distribution<std::mt19937::result_type> dist6(0, 1);
+
+		int r = dist6(rng);
+		m_activeRandomRotate = r == 1;
+		int t = dist6(rng);
+		m_Angle = t == 0 ? 360.0f : -360.0f;
 	}
 
 	void UpdateParallel(const Hedgehog::Universe::SUpdateInfo& updateInfo) override
@@ -947,7 +959,9 @@ public:
 		auto& rTransform = m_spModel->m_spInstanceInfo->m_Transform;
 		auto& rMatrix = rTransform.matrix();
 
-#define LERP(a, b) ((1.0f - m_Factor) * (a) + (b) * m_Factor)
+		float ringScale = 1.175f;
+
+#define LERP(a, b) ((1.0f - EaseInCubic(m_Factor)) * (a) + EaseInCubic(m_Factor) * (b))
 
 		rTransform = m_Transform;
 
@@ -957,6 +971,8 @@ public:
 		rMatrix.col(0) /= LERP(1.0f, scale / 0.2f);
 		rMatrix.col(1) /= LERP(1.0f, scale / 0.2f);
 		rMatrix.col(2) /= LERP(1.0f, scale / 0.2f);
+
+		rTransform.scale(ringScale);
 
 		rTransform(0, 3) = LERP(rTransform(0, 3), -0.7765625f);
 		rTransform(1, 3) = LERP(rTransform(1, 3), -0.7833333333333333f);
@@ -971,12 +987,23 @@ public:
 
 #undef LERP
 
-		m_Rotation = m_Rotation.slerp(updateInfo.DeltaTime * 6.0f, m_TargetRotation);
+		float travelDuration = 0.425f;
 
-		m_Factor += updateInfo.DeltaTime * 0.125f;
-		m_Factor *= 1.2732395f;
+		if (!m_activeRandomRotate)
+		{
+			m_Rotation = m_Rotation.slerp(EaseOutCubic(updateInfo.DeltaTime * 6.5f), m_TargetRotation);
+		}
+		else
+		{
+			float dur = travelDuration * 0.75f;
+			hh::math::CQuaternion q = FromAxisAngle(m_Angle * updateInfo.DeltaTime / dur);
 
-		if (m_Factor > 1.0f)
+			m_Rotation = m_Rotation.slerp(EaseOutCubic(updateInfo.DeltaTime / dur), q * m_TargetRotation);
+		}
+		
+		m_Factor += updateInfo.DeltaTime / travelDuration;
+
+		if (m_Factor >= 1.0f)
 		{
 			SendMessage(m_ActorID, boost::make_shared<Sonic::Message::MsgKill>());
 
@@ -984,6 +1011,31 @@ public:
 			rcScene->SetPosition(0, HudSonicStage::yAspectOffset);
 			rcScene->m_MotionRepeatType = Chao::CSD::eMotionRepeatType_PlayThenDestroy;
 		}
+	}
+
+	float EaseInCubic(float t) 
+	{
+		return t * t * t;
+	}
+
+	float EaseOutCubic(float t) 
+	{
+		return 1 - pow(1 - t, 3);
+	}
+
+	hh::math::CQuaternion FromAxisAngle(float angleDegrees)
+	{
+		float angleRadians = angleDegrees * PI / 180.0f;
+		float halfAngle = angleRadians / 2.0f;
+		float s = sin(halfAngle);
+
+		return hh::math::CQuaternion
+		(
+			cos(halfAngle),
+			0.0f,
+			1.0f * s,
+			0.0f
+		);
 	}
 
 	bool ProcessMessage(Hedgehog::Universe::Message& message,bool flag) override
@@ -1103,7 +1155,7 @@ HOOK(void, __fastcall, CObjRingProcMsgHitEventCollision, 0x10534B0, Sonic::CGame
 	auto const* context = Sonic::Player::CPlayerSpeedContext::GetInstance();
 	if (rcSpeedGauge && context->m_pPlayer->m_ActorID == in_rMsg.m_SenderActorID)
 	{
-		This->m_pMember->m_pGameDocument->AddGameObject(boost::make_shared<CObjGetItem>(This->m_spMatrixNodeTransform->m_Transform.m_Matrix));
+		This->m_pMember->m_pGameDocument->AddGameObject(boost::make_shared<CObjGetRing>(This->m_spMatrixNodeTransform->m_Transform.m_Matrix));
 	}
 
 	originalCObjRingProcMsgHitEventCollision(This, Edx, in_rMsg);
