@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <string>
 #include <filesystem>
+#include "random"
 
 // Dependencies
 #include "include\Helpers.h"
