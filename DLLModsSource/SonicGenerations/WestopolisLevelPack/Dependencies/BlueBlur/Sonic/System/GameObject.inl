@@ -2,7 +2,7 @@ namespace Sonic
 {
     inline uint32_t pCGameObjectCtor = 0xD601F0;
 
-    inline void fCGameObjectCtor(CGameObject* This)
+    inline BB_NOINLINE void fCGameObjectCtor(CGameObject* This)
     {
         __asm
         {
@@ -46,10 +46,35 @@ namespace Sonic
         fpCGameObjectAddRenderable(this, in_Category, in_spRenderable, in_CastShadow);
     }
 
+    inline BB_FUNCTION_PTR(void, __thiscall, fpCGameObjectRemoveRenderable, 0xD5F140,
+        CGameObject* This, const Hedgehog::Base::CStringSymbol in_Category, const boost::shared_ptr<Hedgehog::Mirage::CRenderable>& in_spRenderable, const bool in_CastShadow);
+    
+    inline void CGameObject::RemoveRenderable(const Hedgehog::Base::CStringSymbol in_Category, 
+        const boost::shared_ptr<Hedgehog::Mirage::CRenderable>& in_spRenderable, const bool in_CastShadow)
+    {
+        fpCGameObjectRemoveRenderable(this, in_Category, in_spRenderable, in_CastShadow);
+    }
+
     inline BB_FUNCTION_PTR(void, __stdcall, fpCGameObjectRemoveRenderables, 0xD5EE50, CGameObject* This);
 
     inline void CGameObject::RemoveRenderables()
     {
         fpCGameObjectRemoveRenderables(this);
+    }
+
+    inline uint32_t pCGameObjectKill = 0xD5FD10;
+
+    inline BB_NOINLINE void fCGameObjectKill(CGameObject* This)
+    {
+        __asm
+        {
+            mov edi, This
+            call [pCGameObjectKill]
+        }
+    }
+
+    inline void CGameObject::Kill()
+    {
+        fCGameObjectKill(this);
     }
 }

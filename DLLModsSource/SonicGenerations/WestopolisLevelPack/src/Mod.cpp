@@ -33,4 +33,7 @@ extern "C" __declspec(dllexport) void PostInit() {
 	    // Render only framebuffer/stencil particles in Render Particle
 	    WRITE_MEMORY(0x13DD790, uint32_t, 2);
 	}
+
+	// Force Knuckles mission to be treasure hunting
+	WRITE_MEMORY(0x1186231, uint8_t, 0xB0, 0x05);
 }

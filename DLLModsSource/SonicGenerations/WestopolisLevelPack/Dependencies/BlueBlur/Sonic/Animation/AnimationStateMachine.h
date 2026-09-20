@@ -18,8 +18,8 @@ namespace Sonic
         boost::shared_ptr<CAnimationState> AddAnimationState(const Hedgehog::Base::CSharedString& in_rName);
         const boost::shared_ptr<CAnimationState>& GetAnimationState(const Hedgehog::Base::CSharedString& in_rName);
         boost::shared_ptr<CAnimationState> ChangeState(const Hedgehog::Base::CSharedString& in_rName);
-        void SetBlend(const Hedgehog::Base::CSharedString& in_rState, const Hedgehog::Base::CSharedString& in_rTargetState, float in_BlendTime);
 
+        void SetAnimationBlend(const Hedgehog::Base::CSharedString& in_rBaseAnim, const Hedgehog::Base::CSharedString& in_rTargetAnim, float in_BlendTime);
         void Update(const Hedgehog::Universe::SUpdateInfo& in_rUpdateInfo);
     };
 

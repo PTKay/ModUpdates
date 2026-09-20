@@ -26,6 +26,9 @@ namespace Sonic
         CGameObject3D();
         virtual ~CGameObject3D();
 
+        BB_OVERRIDE_FUNCTION_PTR(bool, CMessageActor, ProcessMessage, 0xD5E4D0,
+            (Hedgehog::Universe::Message&, in_rMessage), (bool, in_Flag))
+
         BB_OVERRIDE_FUNCTION_PTR(void, CGameObject, AddCallback, 0xD5CB80, (const Hedgehog::Base::THolder<CWorld>&, in_rWorldHolder),
             (Sonic::CGameDocument*, in_pGameDocument), (const boost::shared_ptr<Hedgehog::Database::CDatabase>&, in_spDatabase))
 
@@ -67,6 +70,8 @@ namespace Sonic
 
         void AddEventCollision(const Hedgehog::Base::CStringSymbol& in_rSymbol, hk2010_2_0::hkpShape* in_pShape, int in_CollisionMask,
             bool in_IsContactPhantom, const boost::shared_ptr<Hedgehog::Mirage::CMatrixNode>& in_spMatrixNode);
+
+        void SetCullingRange(float in_Range);
     };
 
     BB_ASSERT_OFFSETOF(CGameObject3D, m_spMatrixNodeTransform, 0xB8);

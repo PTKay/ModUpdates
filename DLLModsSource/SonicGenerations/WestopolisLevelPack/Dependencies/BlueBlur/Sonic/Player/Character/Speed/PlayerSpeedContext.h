@@ -65,7 +65,7 @@ namespace Sonic::Player
         Hedgehog::Math::CMatrix44 m_InputMatrixTransposed; //0x2D0
         Hedgehog::Math::CMatrix44 m_InputMatrix; //0x310
         Hedgehog::Math::CVector m_HighSpeedVector; //0x350
-        bool m_WasGrounded;    // Seems to be a flag for something?
+        char m_Field360;    // Seems to be a flag for something?
         BB_INSERT_PADDING(0x0F);
         Hedgehog::Math::CVector m_FloorAndGrindRailNormal; //0x370
         Hedgehog::Math::CVector m_Field380; // Something with stick direction
@@ -137,7 +137,7 @@ namespace Sonic::Player
         boost::shared_ptr<CShapeCastCollision> m_spShapeCastCollision_05; // 0x614
 
         float m_UnkDotProduct;
-        float m_RigidBodyOffsetDistance;
+        BB_INSERT_PADDING(0x04);
 
         boost::shared_ptr<Hedgehog::Mirage::CMatrixNodeNormal> m_spMatrixNodeNormal_04; // 0x624
         boost::shared_ptr<Hedgehog::Mirage::CMatrixNodeNormal> m_spMatrixNodeNormal_05; // 0x62C
@@ -148,23 +148,8 @@ namespace Sonic::Player
         size_t m_ChaosEnergyGaugeSize; // 0x680
         float m_ChaosEnergySetting;    // 0x684
 
-        //BB_INSERT_PADDING(0x38);
-
-        int field_688;
-        int field_68C;
-
-        // todo: move?
-        struct __declspec(align(8)) SDiveModeData
-        {
-            Hedgehog::Math::CVector m_VectorA;
-            Hedgehog::Math::CVector Direction;
-            float m_Field30;
-            bool Force2DMode;
-            bool m_Field35;
-            float m_Field38;
-        } m_DiveModeData;
-
-
+        //BB_INSERT_PADDING(0x58);
+        BB_INSERT_PADDING(0x38);
         float m_FloatA;
         float m_FloatB;
         BB_INSERT_PADDING(0x18);
@@ -321,10 +306,6 @@ namespace Sonic::Player
         void SetYawRotation(const Hedgehog::Math::CQuaternion& in_rRotation, bool in_UpdateMatrix = true);
         void SetYawRotation(float in_Angle, bool in_UpdateMatrix = true);
 
-        Hedgehog::Math::CQuaternion GetPitchRollRotation(bool in_UpdateMatrix = true);
-
-        void CleanYawRotation();
-
         float GetMaxChaosEnergy() const;
     };
 
@@ -349,6 +330,7 @@ namespace Sonic::Player
     BB_ASSERT_OFFSETOF(CPlayerSpeedContext, m_ChaosEnergyGaugeSize, 0x680);
     BB_ASSERT_OFFSETOF(CPlayerSpeedContext, m_ChaosEnergySetting, 0x684);
     BB_ASSERT_OFFSETOF(CPlayerSpeedContext, m_FloorNormal, 0x6E0);
+    BB_ASSERT_OFFSETOF(CPlayerSpeedContext, m_CameraOnlyUseGroundTarget, 0x7D8);
     BB_ASSERT_OFFSETOF(CPlayerSpeedContext, m_spReactionJumpQTE_HUDPtr, 0x7F4);
     BB_ASSERT_OFFSETOF(CPlayerSpeedContext, m_spTrickJumpSequence, 0x800);
     BB_ASSERT_OFFSETOF(CPlayerSpeedContext, m_aGroundSearch, 0x810);

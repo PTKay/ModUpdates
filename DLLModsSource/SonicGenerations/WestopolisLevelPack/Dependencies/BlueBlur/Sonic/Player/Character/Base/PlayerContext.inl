@@ -10,7 +10,7 @@ namespace Sonic::Player
 
     inline uint32_t pCPlayerContextChangeState = 0xE4FF30;
 
-    inline Hedgehog::Universe::TStateMachine<CPlayerContext>::TState* fCPlayerContextChangeState(
+    inline BB_NOINLINE Hedgehog::Universe::TStateMachine<CPlayerContext>::TState* fCPlayerContextChangeState(
         CPlayerContext* This, const Hedgehog::Base::CSharedString* in_pType)
     {
         Hedgehog::Universe::TStateMachine<CPlayerContext>::TState* pResult;
@@ -36,25 +36,6 @@ namespace Sonic::Player
         const EPlayerSpeedState in_PlayerSpeedState)
     {
         return ChangeState(ConvertPlayerSpeedStateToString(in_PlayerSpeedState));
-    }
-
-    inline int pCPlayerContextChangePosture = 0x00E78D30;
-    static __declspec(noinline) __declspec(naked) void fCPlayerContextChangePosture()
-    {
-	    __asm
-        {
-            mov eax, edx
-            jmp [pCPlayerContextChangePosture]
-        }
-    }
-
-    inline BB_FUNCTION_PTR(inline Hedgehog::Universe::TStateMachine<CPlayerContext>::TState*, __fastcall, fpCPlayerContextChangePosture, fCPlayerContextChangePosture,
-        CPlayer* This, const Hedgehog::Base::CSharedString& in_rType, bool in_Unknown);
-
-    inline Hedgehog::Universe::TStateMachine<CPlayerContext>::TState* CPlayerContext::ChangePosture(
-        const Hedgehog::Base::CSharedString& in_rType, bool in_Unknown)
-    {
-        return fpCPlayerContextChangePosture(m_pPlayer, in_rType, in_Unknown);
     }
 
     template <typename T>
